@@ -639,17 +639,18 @@ export default function CourseLearningPage() {
                           </h3>
                         );
 
-                      if (block.type === "p") return <p key={i}>{block.text}</p>;
+                      if (block.type === "p") 
+                        return <p key={i}>{block.text}</p>;
 
                       if (block.type === "ol" && block.items)
                         return (
-                          <ol key={i} className="flex flex-col gap-2 pl-1 list-decimal pl-6">
+                          <ol key={i} className="flex flex-col gap-2 list-decimal pl-6">
                             {block.items.map((item, j) => (
                               <li key={j}>
                                 <span className="font-bold text-[#202020]">
-                                  {item.bold}
+                                  {(item as { bold: string; text: string }).bold}
                                 </span>
-                                {item.text}
+                                {(item as { bold: string; text: string }).text}
                               </li>
                             ))}
                           </ol>
@@ -657,9 +658,11 @@ export default function CourseLearningPage() {
 
                       if (block.type === "ul" && block.items)
                         return (
-                          <ul key={i} className="flex flex-col gap-1.5 pl-1 list-disc pl-6">
+                          <ul key={i} className="flex flex-col gap-1.5 list-disc pl-6">
                             {block.items.map((item, j) => (
-                              <li key={j}>{item}</li>
+                              <li key={j}>
+                                {typeof item === "string" ? item : item.text}
+                              </li>
                             ))}
                           </ul>
                         );
