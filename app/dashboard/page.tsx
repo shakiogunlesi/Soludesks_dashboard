@@ -221,7 +221,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex min-h-screen bg-white">
       {/* ── Sidebar ── */}
       <aside
         className={[
@@ -367,7 +367,7 @@ export default function DashboardPage() {
         </header>
 
         {/* ── Page content ── */}
-        <main className="flex-1 overflow-y-auto bg-white">
+        <main className="flex-1 bg-white">
           <div className="px-6 py-6 max-w-7xl">
             {/* Page title */}
             <div className="mb-6">
