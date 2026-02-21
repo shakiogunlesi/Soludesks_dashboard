@@ -472,13 +472,18 @@ export default function CourseLearningPage() {
   const [showQuiz, setShowQuiz] = useState(false);
 
   useEffect(() => {
-    if (completedLessons.size >= TOTAL_LESSONS) {
+    const allLessonIds = SECTIONS
+      .flatMap(s => s.lessons)
+      .filter(l => l.type !== "quiz")
+      .map(l => l.id);
+
+    if (allLessonIds.length > 0 && allLessonIds.every(id => completedLessons.has(id))) {
       setCourseCompleted(true);
       setActiveSection("assessment");
       setActiveLesson("5-quiz");
       setShowQuiz(true);
     }
-  }, [completedLessons.size]);
+  }, [completedLessons]);
 
   const handleToggleComplete = (id: string) => {
     setCompletedLessons((prev) => {
