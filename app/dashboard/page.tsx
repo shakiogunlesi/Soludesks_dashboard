@@ -308,7 +308,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2">
             {/* Chat */}
             <button
               className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors"
