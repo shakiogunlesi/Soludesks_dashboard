@@ -372,11 +372,9 @@ function SidebarSection({
     if (forceOpen) setOpen(true);
   }, [forceOpen]);
 
-  // Sections that get green check when course is completed
   const coreSectionsWithCheck = new Set(["setup", "navigating", "resources"]);
   const showGreenCheck = isCourseCompleted && coreSectionsWithCheck.has(section.id);
 
-  // Hide individual lessons when course is completed (except quiz)
   const shouldShowLessons = !isCourseCompleted || section.id === "assessment";
 
   return (
