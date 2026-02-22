@@ -242,6 +242,34 @@ const PointsIcon = () => (
 const user = { name: "Madison Greg", email: "Madison.reertr...", image: "/images/Avatars.png" };
 const getInitials = (name: string) => name.split(" ").map((n) => n[0]).join("").toUpperCase();
 
+// ─── Quiz Completion Screen ───────────────────────────────────────────────────
+function CourseCompletionScreen({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center bg-white rounded-2xl border border-[#F0F0F0] p-12 gap-6 min-h-[500px]">
+      <div className="w-20 h-20 rounded-full bg-[#EAF3FF] flex items-center justify-center">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="#0A60E1" strokeWidth="2" fill="none" />
+          <path d="M7 12.5l3 3 6-6" stroke="#0A60E1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <div className="flex flex-col items-center gap-2 text-center">
+        <h2 className="text-xl font-bold text-[#202020]">Course Completed!</h2>
+        <p className="text-sm text-[#636363] max-w-sm leading-relaxed">
+          Congratulations! You have successfully completed{" "}
+          <span className="font-semibold text-[#202020]">Effective Workplace Communication</span>.
+          Your quiz has been submitted for review.
+        </p>
+      </div>
+      <button
+        onClick={onReset}
+        className="mt-2 px-8 py-3 bg-[#0A60E1] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Back to Courses
+      </button>
+    </div>
+  );
+}
+
 // ─── Quiz View ────────────────────────────────────────────────────────────────
 function QuizView({ onComplete }: { onComplete: () => void }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -289,7 +317,7 @@ function QuizView({ onComplete }: { onComplete: () => void }) {
             {q.type === "multiple-choice" && q.options ? (
               <div className="flex flex-col gap-2 pl-11">
                 {q.options.map((option, optIdx) => {
-                  const optionLabel = String.fromCharCode(65 + optIdx); // A, B, C, D
+                  const optionLabel = String.fromCharCode(65 + optIdx);
                   const isSelected = answers[q.id] === option;
                   return (
                     <button
@@ -470,20 +498,32 @@ export default function CourseLearningPage() {
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [courseCompleted, setCourseCompleted] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  // ── NEW: tracks whether the quiz has been submitted ──
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
 
+  // ── FIXED: triggers on actual lesson IDs instead of TOTAL_LESSONS constant ──
   useEffect(() => {
     const allLessonIds = SECTIONS
-      .flatMap(s => s.lessons)
-      .filter(l => l.type !== "quiz")
-      .map(l => l.id);
+      .flatMap((s) => s.lessons)
+      .filter((l) => l.type !== "quiz")
+      .map((l) => l.id);
 
-    if (allLessonIds.length > 0 && allLessonIds.every(id => completedLessons.has(id))) {
+    if (allLessonIds.length > 0 && allLessonIds.every((id) => completedLessons.has(id))) {
       setCourseCompleted(true);
       setActiveSection("assessment");
       setActiveLesson("5-quiz");
       setShowQuiz(true);
     }
   }, [completedLessons]);
+
+  const handleReset = () => {
+    setQuizSubmitted(false);
+    setShowQuiz(false);
+    setCourseCompleted(false);
+    setCompletedLessons(new Set());
+    setActiveLesson("1-1");
+    setActiveSection("introduction");
+  };
 
   const handleToggleComplete = (id: string) => {
     setCompletedLessons((prev) => {
@@ -494,15 +534,17 @@ export default function CourseLearningPage() {
     });
   };
 
+  // ── UPDATED: also sets quizSubmitted to trigger the completion screen ──
   const handleQuizComplete = () => {
     setCompletedLessons((prev) => new Set([...prev, "5-quiz"]));
+    setQuizSubmitted(true);
   };
 
   const isQuizActive = activeLesson === "5-quiz" || showQuiz;
 
   const navItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: <DashboardIcon /> },
-    { label: "Courses/Materials", href: "/courses", icon: <CoursesIcon active />, active: true },
+    { label: "Courses/Materials", href: "/courses/effective-workplace-communication/courselearning", icon: <CoursesIcon active />, active: true },
     { label: "Classes", href: "#", icon: <ClassesIcon /> },
     { label: "Assessments", href: "#", icon: <AssessmentsIcon /> },
     { label: "My Certification", href: "#", icon: <CertificationIcon /> },
@@ -580,10 +622,10 @@ export default function CourseLearningPage() {
         <main className="flex-1 overflow-y-auto bg-[#F5F6FA]">
           <div className="flex flex-col lg:flex-row gap-5 px-6 py-6 max-w-[1400px]">
 
-            {/* ── Left ── */}
+            {/* ── Left Column ── */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-4">
-                <Link href="/courses" className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-[#E8E8E8] hover:bg-gray-50">
+                <Link href="/courses/effective-workplace-communication" className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-[#E8E8E8] hover:bg-gray-50">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" stroke="#636363" />
                   </svg>
@@ -591,112 +633,138 @@ export default function CourseLearningPage() {
                 <h1 className="text-xl font-medium text-[#202020]">Effective Workplace Communication</h1>
               </div>
 
-              {!isQuizActive && (
-                <div className="relative w-full max-h-[450px] aspect-video rounded-2xl overflow-hidden bg-gray-900 mb-5">
-                  <Image src="/images/lesson-bg.png" alt="Course video thumbnail" fill className="object-cover opacity-80" sizes="(max-width: 1024px) 100vw, 65vw" priority onError={(e) => { (e.currentTarget as HTMLImageElement).src = "https://placehold.co/900x506/1e293b/94a3b8?text=Course+Video"; }} />
-                  <button className="absolute inset-0 flex items-center justify-center group" aria-label="Play video">
-                    <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M8 5.14v14l11-7-11-7z" fill="#0A60E1" />
-                      </svg>
-                    </div>
-                  </button>
-                </div>
-              )}
-
-              {!isQuizActive && (
-                <div className="flex gap-0 mb-5 border-b border-[#F0F0F0]">
-                  <button
-                    onClick={() => setActiveTab("content")}
-                    className={`px-4 pb-3 text-base transition-all border-b-2 -mb-px ${
-                      activeTab === "content" ? "font-bold text-[#0A60E1] border-[#0A60E1]" : "text-[#636363] border-transparent hover:text-[#202020]"
-                    }`}
-                  >
-                    Course Content
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("reviews")}
-                    className={`px-4 pb-3 text-base transition-all border-b-2 -mb-px ${
-                      activeTab === "reviews" ? "font-bold text-[#0A60E1] border-[#0A60E1]" : "text-[#636363] border-transparent hover:text-[#202020]"
-                    }`}
-                  >
-                    Review/Feedbacks
-                  </button>
-                </div>
-              )}
-
-              {isQuizActive ? (
-                <QuizView onComplete={handleQuizComplete} />
-              ) : activeTab === "content" ? (
-                <div className="bg-white rounded-2xl border border-[#F0F0F0] p-6">
-                  <h2 className="text-base font-bold text-[#202020] mb-4">
-                    {LESSON_CONTENT.title}
-                  </h2>
-
-                  <div className="flex flex-col gap-3 text-sm text-[#4a4a4a] leading-relaxed">
-                    {LESSON_CONTENT.body.map((block, i) => {
-                      if (block.type === "h2")
-                        return (
-                          <h3 key={i} className="text-sm font-bold text-[#202020] mt-2">
-                            {block.text}
-                          </h3>
-                        );
-
-                      if (block.type === "p") 
-                        return <p key={i}>{block.text}</p>;
-
-                      if (block.type === "ol" && block.items)
-                        return (
-                          <ol key={i} className="flex flex-col gap-2 list-decimal pl-6">
-                            {block.items.map((item, j) => (
-                              <li key={j}>
-                                <span className="font-bold text-[#202020]">
-                                  {(item as { bold: string; text: string }).bold}
-                                </span>
-                                {(item as { bold: string; text: string }).text}
-                              </li>
-                            ))}
-                          </ol>
-                        );
-
-                      if (block.type === "ul" && block.items)
-                        return (
-                          <ul key={i} className="flex flex-col gap-1.5 list-disc pl-6">
-                            {block.items.map((item, j) => (
-                              <li key={j}>
-                                {typeof item === "string" ? item : item.text}
-                              </li>
-                            ))}
-                          </ul>
-                        );
-
-                      return null;
-                    })}
-                  </div>
-
-                  {/* Only one button block – placed at the end */}
-                  <div className="flex justify-end mt-8">
-                    <button
-                      onClick={() => handleToggleComplete(activeLesson)}
-                      className={[
-                        "px-6 py-3 text-base font-[400] rounded-lg border transition-colors",
-                        completedLessons.has(activeLesson)
-                          ? "text-white bg-[#0A60E1] border-[#0A60E1] hover:bg-blue-700"
-                          : "text-[#0A60E1] bg-white border-[#0A60E1] hover:bg-[#EAF3FF]",
-                      ].join(" ")}
-                    >
-                      {completedLessons.has(activeLesson) ? "Completed ✓" : "Mark as complete"}
-                    </button>
-                  </div>
-                </div>
+              {/* ── QUIZ SUBMITTED → show completion screen, hide everything else ── */}
+              {quizSubmitted ? (
+                <CourseCompletionScreen onReset={handleReset} />
               ) : (
-                <div className="bg-white rounded-2xl border border-[#F0F0F0] p-6">
-                  <p className="text-sm text-[#636363]">No reviews yet for this lesson.</p>
-                </div>
+                <>
+                  {/* Video thumbnail — hidden when quiz is active */}
+                  {!isQuizActive && (
+                    <div className="relative w-full max-h-[450px] aspect-video rounded-2xl overflow-hidden bg-gray-900 mb-5">
+                      <Image src="/images/lesson-bg.png" alt="Course video thumbnail" fill className="object-cover opacity-80" sizes="(max-width: 1024px) 100vw, 65vw" priority onError={(e) => { (e.currentTarget as HTMLImageElement).src = "https://placehold.co/900x506/1e293b/94a3b8?text=Course+Video"; }} />
+                      <button className="absolute inset-0 flex items-center justify-center group" aria-label="Play video">
+                        <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M8 5.14v14l11-7-11-7z" fill="#0A60E1" />
+                          </svg>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Tabs — hidden when quiz is active */}
+                  {!isQuizActive && (
+                    <div className="flex gap-0 mb-5 border-b border-[#F0F0F0]">
+                      <button
+                        onClick={() => setActiveTab("content")}
+                        className={`px-4 pb-3 text-base transition-all border-b-2 -mb-px ${
+                          activeTab === "content" ? "font-bold text-[#0A60E1] border-[#0A60E1]" : "text-[#636363] border-transparent hover:text-[#202020]"
+                        }`}
+                      >
+                        Course Content
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("reviews")}
+                        className={`px-4 pb-3 text-base transition-all border-b-2 -mb-px ${
+                          activeTab === "reviews" ? "font-bold text-[#0A60E1] border-[#0A60E1]" : "text-[#636363] border-transparent hover:text-[#202020]"
+                        }`}
+                      >
+                        Review/Feedbacks
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Quiz or Lesson Content or Reviews */}
+                  {isQuizActive ? (
+                    <QuizView onComplete={handleQuizComplete} />
+                  ) : activeTab === "content" ? (
+                    <div className="bg-white rounded-2xl border border-[#F0F0F0] p-6">
+                      <h2 className="text-base font-bold text-[#202020] mb-4">
+                        {LESSON_CONTENT.title}
+                      </h2>
+
+                      <div className="flex flex-col gap-3 text-sm text-[#4a4a4a] leading-relaxed">
+                        {LESSON_CONTENT.body.map((block, i) => {
+                          if (block.type === "h2")
+                            return (
+                              <h3 key={i} className="text-sm font-bold text-[#202020] mt-2">
+                                {block.text}
+                              </h3>
+                            );
+
+                          if (block.type === "p")
+                            return <p key={i}>{block.text}</p>;
+
+                          if (block.type === "ol" && block.items)
+                            return (
+                              <ol key={i} className="flex flex-col gap-2 list-decimal pl-6">
+                                {block.items.map((item, j) => (
+                                  <li key={j}>
+                                    <span className="font-bold text-[#202020]">
+                                      {(item as { bold: string; text: string }).bold}
+                                    </span>
+                                    {(item as { bold: string; text: string }).text}
+                                  </li>
+                                ))}
+                              </ol>
+                            );
+
+                          if (block.type === "ul" && block.items)
+                            return (
+                              <ul key={i} className="flex flex-col gap-1.5 list-disc pl-6">
+                                {block.items.map((item, j) => (
+                                  <li key={j}>
+                                    {typeof item === "string" ? item : item.text}
+                                  </li>
+                                ))}
+                              </ul>
+                            );
+
+                          return null;
+                        })}
+                      </div>
+
+                      <div className="flex justify-end mt-8">
+                        <button
+                          onClick={() => {
+                            const allLessonIds = SECTIONS
+                              .flatMap((s) => s.lessons)
+                              .filter((l) => l.type !== "quiz")
+                              .map((l) => l.id);
+
+                            const willBeCompleted = new Set([...completedLessons, activeLesson]);
+
+                            handleToggleComplete(activeLesson);
+
+                            if (allLessonIds.every((id) => willBeCompleted.has(id))) {
+                              setCourseCompleted(true);
+                              setActiveSection("assessment");
+                              setActiveLesson("5-quiz");
+                              setShowQuiz(true);
+                            }
+                          }}
+                          className={[
+                            "px-6 py-3 text-base font-[400] rounded-lg border transition-colors",
+                            completedLessons.has(activeLesson)
+                              ? "text-white bg-[#0A60E1] border-[#0A60E1] hover:bg-blue-700"
+                              : "text-[#0A60E1] bg-white border-[#0A60E1] hover:bg-[#EAF3FF]",
+                          ].join(" ")}
+                        >
+                          {completedLessons.has(activeLesson) ? "Completed ✓" : "Mark as complete"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl border border-[#F0F0F0] p-6">
+                      <p className="text-sm text-[#636363]">No reviews yet for this lesson.</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-           <div className="w-full max-w-[407px] flex-shrink-0">
+            {/* ── Right Sidebar (Lessons Panel) ── */}
+            <div className="w-full max-w-[407px] flex-shrink-0">
               <div className="bg-white rounded-2xl border border-[#F0F0F0] overflow-hidden">
                 <div className="px-4 py-3.5 border-b border-[#F0F0F0]">
                   <p className="text-sm font-semibold text-[#202020]">
@@ -705,10 +773,10 @@ export default function CourseLearningPage() {
                 </div>
                 <div className="overflow-y-auto max-h-[calc(100vh-180px)]">
                   {SECTIONS.map((section) => {
-                    // Hide introduction when course completed
+                    // Hide introduction section when course is completed
                     if (courseCompleted && section.id === "introduction") return null;
 
-                    // Hide detailed lessons in setup/nav/resources when completed
+                    // Hide sections with lessons (other than assessment) when course is completed
                     if (courseCompleted && section.lessons.length > 0 && section.id !== "assessment") {
                       return null;
                     }

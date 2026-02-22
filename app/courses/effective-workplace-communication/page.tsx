@@ -169,7 +169,7 @@ export default function CourseDetailPage() {
 
   const navItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: <DashboardIcon /> },
-    { label: "Courses/Materials", href: "/courses", icon: <CoursesIcon active />, active: true },
+    { label: "Courses/Materials", href: "/courses/effective-workplace-communication", icon: <CoursesIcon active />, active: true },
     { label: "Classes", href: "#", icon: <ClassesIcon /> },
     { label: "Assessments", href: "#", icon: <AssessmentsIcon /> },
     { label: "My Certification", href: "#", icon: <CertificationIcon /> },
