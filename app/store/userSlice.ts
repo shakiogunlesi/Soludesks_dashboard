@@ -5,6 +5,7 @@ interface UserState {
   name: string;
   email: string;
   isAuthenticated: boolean;
+  avatar?: string;
 }
 
 const initialState: UserState = {
