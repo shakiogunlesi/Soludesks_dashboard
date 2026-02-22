@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSelector, useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
+import type { RootState } from "../../../store/store";
+import { clearUser } from "../../../store/userSlice";
+import {
+  useGetCourseDetailQuery,
+  useGetCourseProgressQuery,
+  useMarkLessonCompleteMutation,
+  useSubmitQuizMutation,
+} from "../../../store/apiSlice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface NavItem {
@@ -33,31 +43,7 @@ interface QuizQuestion {
   options?: string[];
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const SECTIONS: Section[] = [
-  {
-    id: "introduction",
-    title: "Introduction",
-    defaultOpen: true,
-    lessons: [
-      { id: "1-1", title: "Welcome Message" },
-      { id: "1-2", title: "A Note on Style" },
-      { id: "1-3", title: "What You'll Learn" },
-      { id: "1-4", title: "Meet Your Instructor" },
-    ],
-  },
-  { id: "setup", title: "Setting Up Your Workspace", lessons: [] },
-  { id: "navigating", title: "Navigating the Course", lessons: [] },
-  { id: "resources", title: "Course Resources", lessons: [] },
-  {
-    id: "assessment",
-    title: "Assessment",
-    lessons: [{ id: "5-quiz", title: "Quiz", type: "quiz" }],
-  },
-];
-
-const TOTAL_LESSONS = 32;
-
+// ─── Static Quiz Questions (content not in API yet) ───────────────────────────
 const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: "q1",
@@ -121,6 +107,7 @@ const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
 ];
 
+// ─── Static Lesson Content (content not in API yet) ───────────────────────────
 const LESSON_CONTENT = {
   title: "Lesson 1 - Welcome Message",
   body: [
@@ -238,9 +225,9 @@ const PointsIcon = () => (
   </svg>
 );
 
-// ─── User ─────────────────────────────────────────────────────────────────────
-const user = { name: "Madison Greg", email: "Madison.reertr...", image: "/images/Avatars.png" };
-const getInitials = (name: string) => name.split(" ").map((n) => n[0]).join("").toUpperCase();
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const getInitials = (name: string) =>
+  name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
 // ─── Quiz Completion Screen ───────────────────────────────────────────────────
 function CourseCompletionScreen({ onReset }: { onReset: () => void }) {
@@ -271,12 +258,17 @@ function CourseCompletionScreen({ onReset }: { onReset: () => void }) {
 }
 
 // ─── Quiz View ────────────────────────────────────────────────────────────────
-function QuizView({ onComplete }: { onComplete: () => void }) {
+function QuizView({
+  onComplete,
+  courseId,
+}: {
+  onComplete: () => void;
+  courseId: string;
+}) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [submitQuiz, { isLoading: isSubmitting }] = useSubmitQuizMutation();
 
   const handleMCSelect = (questionId: string, option: string) => {
-    if (submitted) return;
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
   };
 
@@ -284,8 +276,12 @@ function QuizView({ onComplete }: { onComplete: () => void }) {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    try {
+      await submitQuiz({ courseId, answers }).unwrap();
+    } catch {
+      // still proceed to completion screen even on error
+    }
     onComplete();
   };
 
@@ -313,7 +309,7 @@ function QuizView({ onComplete }: { onComplete: () => void }) {
               </div>
             </div>
 
-            {/* Options or Text Area */}
+            {/* Options or Textarea */}
             {q.type === "multiple-choice" && q.options ? (
               <div className="flex flex-col gap-2 pl-11">
                 {q.options.map((option, optIdx) => {
@@ -353,19 +349,19 @@ function QuizView({ onComplete }: { onComplete: () => void }) {
         ))}
       </div>
 
-      {/* Submit Button */}
+      {/* Submit */}
       <div className="flex justify-end mt-8">
         <button
           onClick={handleSubmit}
-          disabled={submitted}
+          disabled={isSubmitting}
           className={[
             "px-16 py-3 text-base font-medium rounded-lg border transition-colors",
-            submitted
+            isSubmitting
               ? "text-white bg-[#0A60E1] border-[#0A60E1] opacity-70 cursor-not-allowed"
               : "text-[#0A60E1] bg-white border-[#0A60E1] hover:bg-[#EAF3FF]",
           ].join(" ")}
         >
-          {submitted ? "Submitted ✓" : "Submit"}
+          {isSubmitting ? "Submitting…" : "Submit"}
         </button>
       </div>
     </div>
@@ -402,7 +398,6 @@ function SidebarSection({
 
   const coreSectionsWithCheck = new Set(["setup", "navigating", "resources"]);
   const showGreenCheck = isCourseCompleted && coreSectionsWithCheck.has(section.id);
-
   const shouldShowLessons = !isCourseCompleted || section.id === "assessment";
 
   return (
@@ -421,17 +416,10 @@ function SidebarSection({
           {showGreenCheck && (
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <circle cx="10" cy="10" r="9" stroke="#22C55E" strokeWidth="2" fill="#22C55E" fillOpacity="0.15" />
-              <path
-                d="M6 10.5L8.5 13L13 7"
-                stroke="#22C55E"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M6 10.5L8.5 13L13 7" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
         </div>
-
         {open ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />}
       </button>
 
@@ -445,7 +433,9 @@ function SidebarSection({
               <li key={lesson.id}>
                 <div
                   className={`flex items-center justify-between mx-5 my-1 px-4 py-3 text-[14px] rounded-xl cursor-pointer transition-all ${
-                    isActive || isCompleted ? "bg-[#EAF3FF] text-[#1D5BD8] font-medium" : "text-[#636363] hover:bg-[#F8FAFC]"
+                    isActive || isCompleted
+                      ? "bg-[#EAF3FF] text-[#1D5BD8] font-medium"
+                      : "text-[#636363] hover:bg-[#F8FAFC]"
                   }`}
                   onClick={() => {
                     onSelectLesson(lesson.id);
@@ -488,56 +478,264 @@ function SidebarSection({
   );
 }
 
+function UserMenu() {
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const user = useSelector((state: RootState) => state.user) ?? {
+    name: "Guest",
+    email: "guest@example.com",
+  };
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleLogout = () => {
+    dispatch(clearUser());
+    router.push("/");
+  };
+
+  return (
+    <div ref={ref} className="relative flex items-center gap-2 pl-2 border-l border-gray-100">
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex items-center gap-2 cursor-pointer group"
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="User menu"
+      >
+        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+          <Image
+            src={user.avatar || "/images/Avatars.png"}
+            alt={user.name || "User"}
+            fill
+            className="object-cover"
+            sizes="48px"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+          <span className="absolute inset-0 flex items-center justify-center">
+            {getInitials(user.name)}
+          </span>
+        </div>
+        <div className="hidden sm:block text-left">
+          <p className="text-base font-medium text-[#202020] leading-none mb-1.5">
+            {user.name || "User"}
+          </p>
+          <p className="text-sm font-normal text-[#636363] leading-none truncate max-w-[100px]">
+            {user.email || "—"}
+          </p>
+        </div>
+        <span className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          <ChevronDownIcon />
+        </span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+10px)] w-64 bg-white rounded-2xl border border-[#F0F0F0] shadow-[0_8px_30px_rgba(0,0,0,0.10)] z-50 overflow-hidden"
+          role="menu"
+          aria-label="User options"
+        >
+          {/* User info header */}
+          <div className="px-4 py-4 border-b border-[#F0F0F0]">
+            <div className="flex items-center gap-3">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                <Image
+                  src={user.avatar || "/images/Avatars.png"}
+                  alt={user.name || "User"}
+                  fill
+                  className="object-cover"
+                  sizes="40px"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center text-xs">
+                  {getInitials(user.name)}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#202020] truncate">{user.name || "User"}</p>
+                <p className="text-xs text-[#636363] truncate">{user.email || "—"}</p>
+                {user.role && (
+                  <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-medium text-[#0A60E1] bg-[#EAF3FF] rounded-full capitalize">
+                    {user.role}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Menu items */}
+          <div className="py-2">
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); }}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#636363] hover:bg-[#F5F6FA] hover:text-[#202020] transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 10.8334C12.3012 10.8334 14.1667 8.96788 14.1667 6.66669C14.1667 4.3655 12.3012 2.50002 10 2.50002C7.69882 2.50002 5.83334 4.3655 5.83334 6.66669C5.83334 8.96788 7.69882 10.8334 10 10.8334Z" stroke="#636363" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M17.1584 17.5C17.1584 14.425 13.95 11.9584 10 11.9584C6.05002 11.9584 2.84167 14.425 2.84167 17.5" stroke="#636363" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              My Profile
+            </button>
+
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); }}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#636363] hover:bg-[#F5F6FA] hover:text-[#202020] transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 12.5C11.3807 12.5 12.5 11.3807 12.5 10C12.5 8.61929 11.3807 7.5 10 7.5C8.61929 7.5 7.5 8.61929 7.5 10C7.5 11.3807 8.61929 12.5 10 12.5Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M1.66699 10.7329V9.26621C1.66699 8.39954 2.37533 7.68287 3.25033 7.68287C4.75866 7.68287 5.37533 6.61621 4.61699 5.30787C4.18366 4.55787 4.44199 3.58287 5.20033 3.14954L6.64199 2.32454C7.30033 1.93287 8.15033 2.16621 8.54199 2.82454L8.63366 2.98287C9.38366 4.29121 10.617 4.29121 11.3753 2.98287L11.467 2.82454C11.8587 2.16621 12.7087 1.93287 13.367 2.32454L14.8087 3.14954C15.567 3.58287 15.8253 4.55787 15.392 5.30787C14.6337 6.61621 15.2503 7.68287 16.7587 7.68287C17.6253 7.68287 18.342 8.39121 18.342 9.26621V10.7329C18.342 11.5995 17.6337 12.3162 16.7587 12.3162C15.2503 12.3162 14.6337 13.3829 15.392 14.6912C15.8253 15.4495 15.567 16.4162 14.8087 16.8495L13.367 17.6745C12.7087 18.0662 11.8587 17.8329 11.467 17.1745L11.3753 17.0162C10.6253 15.7079 9.39199 15.7079 8.63366 17.0162L8.54199 17.1745C8.15033 17.8329 7.30033 18.0662 6.64199 17.6745L5.20033 16.8495C4.44199 16.4162 4.18366 15.4412 4.61699 14.6912C5.37533 13.3829 4.75866 12.3162 3.25033 12.3162C2.37533 12.3162 1.66699 11.5995 1.66699 10.7329Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Account Settings
+            </button>
+          </div>
+
+          {/* Divider + Logout */}
+          <div className="border-t border-[#F0F0F0] py-2">
+            <button
+              role="menuitem"
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M7.41675 6.29999C7.67508 3.29999 9.21675 2.07499 12.5917 2.07499H12.7001C16.4251 2.07499 17.9167 3.56665 17.9167 7.29165V12.725C17.9167 16.45 16.4251 17.9417 12.7001 17.9417H12.5917C9.24175 17.9417 7.70008 16.7333 7.42508 13.7833" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12.5001 10H3.01672" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4.87507 7.20834L2.08340 10L4.87507 12.7917" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function CourseLearningPage() {
+  const COURSE_ID = "1";
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerSearch, setHeaderSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"content" | "reviews">("content");
   const [activeLesson, setActiveLesson] = useState("1-1");
   const [activeSection, setActiveSection] = useState("introduction");
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [courseCompleted, setCourseCompleted] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
-  // ── NEW: tracks whether the quiz has been submitted ──
   const [quizSubmitted, setQuizSubmitted] = useState(false);
 
-  // ── FIXED: triggers on actual lesson IDs instead of TOTAL_LESSONS constant ──
-  useEffect(() => {
-    const allLessonIds = SECTIONS
-      .flatMap((s) => s.lessons)
-      .filter((l) => l.type !== "quiz")
-      .map((l) => l.id);
+  // ── Redux user ──
+  const user = useSelector((state: RootState) => state.user) ?? {
+    name: "Guest",
+    email: "guest@example.com",
+  };
 
-    if (allLessonIds.length > 0 && allLessonIds.every((id) => completedLessons.has(id))) {
+  // ── API data ──
+  const { data: courseData, isLoading: courseLoading } = useGetCourseDetailQuery(COURSE_ID);
+  const { data: progressData } = useGetCourseProgressQuery(COURSE_ID);
+  const [markLessonComplete] = useMarkLessonCompleteMutation();
+
+  // Derive sections from API; fall back to empty while loading
+  const sections: Section[] = courseData?.sections ?? [];
+
+  // Derive completed lessons — seed from API progress, then merge local state
+  const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
+
+  // Once progress loads, hydrate local state
+  useEffect(() => {
+    if (progressData?.completedLessons?.length) {
+      setLocalCompleted(new Set(progressData.completedLessons));
+    }
+    if (progressData?.quizSubmitted) {
+      setQuizSubmitted(true);
+    }
+  }, [progressData]);
+
+  // Combined completed set (API seed + local additions)
+  const completedLessons = localCompleted;
+
+  // Total non-quiz lessons across all sections
+  const allLessonIds = sections
+    .flatMap((s) => s.lessons)
+    .filter((l) => l.type !== "quiz")
+    .map((l) => l.id);
+
+  const totalLessons = allLessonIds.length;
+
+  // Auto-complete detection
+  useEffect(() => {
+    if (
+      totalLessons > 0 &&
+      allLessonIds.every((id) => completedLessons.has(id))
+    ) {
       setCourseCompleted(true);
       setActiveSection("assessment");
       setActiveLesson("5-quiz");
       setShowQuiz(true);
     }
-  }, [completedLessons]);
+  }, [completedLessons, totalLessons]);
+
+  // ── Handlers ──
+  const handleToggleComplete = async (id: string) => {
+    setLocalCompleted((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+    // Fire-and-forget API call
+    markLessonComplete({ courseId: COURSE_ID, lessonId: id }).catch(() => {});
+  };
+
+  const handleMarkCurrentComplete = () => {
+    const willBeCompleted = new Set([...completedLessons, activeLesson]);
+    handleToggleComplete(activeLesson);
+
+    if (allLessonIds.every((id) => willBeCompleted.has(id))) {
+      setCourseCompleted(true);
+      setActiveSection("assessment");
+      setActiveLesson("5-quiz");
+      setShowQuiz(true);
+    }
+  };
+
+  const handleQuizComplete = () => {
+    setLocalCompleted((prev) => new Set([...prev, "5-quiz"]));
+    setQuizSubmitted(true);
+  };
 
   const handleReset = () => {
     setQuizSubmitted(false);
     setShowQuiz(false);
     setCourseCompleted(false);
-    setCompletedLessons(new Set());
+    setLocalCompleted(new Set());
     setActiveLesson("1-1");
     setActiveSection("introduction");
-  };
-
-  const handleToggleComplete = (id: string) => {
-    setCompletedLessons((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  // ── UPDATED: also sets quizSubmitted to trigger the completion screen ──
-  const handleQuizComplete = () => {
-    setCompletedLessons((prev) => new Set([...prev, "5-quiz"]));
-    setQuizSubmitted(true);
   };
 
   const isQuizActive = activeLesson === "5-quiz" || showQuiz;
@@ -568,7 +766,9 @@ export default function CourseLearningPage() {
         </nav>
       </aside>
 
-      {sidebarOpen && <div className="fixed inset-0 z-30 bg-black/20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-30 bg-black/20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      )}
 
       {/* ── Main ── */}
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -586,6 +786,7 @@ export default function CourseLearningPage() {
               <SearchIcon />
             </div>
           </div>
+
           <div className="flex items-center gap-2">
             <button className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors" aria-label="Messages">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -605,16 +806,8 @@ export default function CourseLearningPage() {
                 <path d="M13.9056 10.1904V8.94994L17.0159 4.04989H18.0854V5.76691H17.4525L15.4917 8.86991V8.92811H19.9116V10.1904H13.9056ZM17.4816 11.5V9.81208L17.5107 9.26278V4.04989H18.9876V11.5H17.4816Z" fill="#FDFDFD" />
               </svg>
             </button>
-            <div className="flex items-center gap-2 pl-2 border-l border-gray-100 cursor-pointer">
-              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                {user.image ? <Image src={user.image} alt={user.name} fill className="object-cover" sizes="48px" /> : getInitials(user.name)}
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-base font-medium text-[#202020] leading-none mb-1.5">{user.name}</p>
-                <p className="text-sm font-normal text-[#636363] leading-none truncate max-w-[100px]">{user.email}</p>
-              </div>
-              <ChevronDownIcon />
-            </div>
+
+            <UserMenu />
           </div>
         </header>
 
@@ -630,18 +823,34 @@ export default function CourseLearningPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" stroke="#636363" />
                   </svg>
                 </Link>
-                <h1 className="text-xl font-medium text-[#202020]">Effective Workplace Communication</h1>
+                {courseLoading ? (
+                  <div className="h-6 w-64 bg-gray-200 rounded animate-pulse" />
+                ) : (
+                  <h1 className="text-xl font-medium text-[#202020]">
+                    {courseData?.course?.title ?? "Effective Workplace Communication"}
+                  </h1>
+                )}
               </div>
 
-              {/* ── QUIZ SUBMITTED → show completion screen, hide everything else ── */}
+              {/* Quiz submitted → completion screen */}
               {quizSubmitted ? (
                 <CourseCompletionScreen onReset={handleReset} />
               ) : (
                 <>
-                  {/* Video thumbnail — hidden when quiz is active */}
+                  {/* Video thumbnail — hidden when quiz active */}
                   {!isQuizActive && (
                     <div className="relative w-full max-h-[450px] aspect-video rounded-2xl overflow-hidden bg-gray-900 mb-5">
-                      <Image src="/images/lesson-bg.png" alt="Course video thumbnail" fill className="object-cover opacity-80" sizes="(max-width: 1024px) 100vw, 65vw" priority onError={(e) => { (e.currentTarget as HTMLImageElement).src = "https://placehold.co/900x506/1e293b/94a3b8?text=Course+Video"; }} />
+                      <Image
+                        src="/images/lesson-bg.png"
+                        alt="Course video thumbnail"
+                        fill
+                        className="object-cover opacity-80"
+                        sizes="(max-width: 1024px) 100vw, 65vw"
+                        priority
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = "https://placehold.co/900x506/1e293b/94a3b8?text=Course+Video";
+                        }}
+                      />
                       <button className="absolute inset-0 flex items-center justify-center group" aria-label="Play video">
                         <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -652,7 +861,7 @@ export default function CourseLearningPage() {
                     </div>
                   )}
 
-                  {/* Tabs — hidden when quiz is active */}
+                  {/* Tabs — hidden when quiz active */}
                   {!isQuizActive && (
                     <div className="flex gap-0 mb-5 border-b border-[#F0F0F0]">
                       <button
@@ -674,75 +883,46 @@ export default function CourseLearningPage() {
                     </div>
                   )}
 
-                  {/* Quiz or Lesson Content or Reviews */}
+                  {/* Quiz or Content or Reviews */}
                   {isQuizActive ? (
-                    <QuizView onComplete={handleQuizComplete} />
+                    <QuizView onComplete={handleQuizComplete} courseId={COURSE_ID} />
                   ) : activeTab === "content" ? (
                     <div className="bg-white rounded-2xl border border-[#F0F0F0] p-6">
                       <h2 className="text-base font-bold text-[#202020] mb-4">
                         {LESSON_CONTENT.title}
                       </h2>
-
                       <div className="flex flex-col gap-3 text-sm text-[#4a4a4a] leading-relaxed">
                         {LESSON_CONTENT.body.map((block, i) => {
                           if (block.type === "h2")
-                            return (
-                              <h3 key={i} className="text-sm font-bold text-[#202020] mt-2">
-                                {block.text}
-                              </h3>
-                            );
-
+                            return <h3 key={i} className="text-sm font-bold text-[#202020] mt-2">{block.text}</h3>;
                           if (block.type === "p")
                             return <p key={i}>{block.text}</p>;
-
                           if (block.type === "ol" && block.items)
                             return (
                               <ol key={i} className="flex flex-col gap-2 list-decimal pl-6">
                                 {block.items.map((item, j) => (
                                   <li key={j}>
-                                    <span className="font-bold text-[#202020]">
-                                      {(item as { bold: string; text: string }).bold}
-                                    </span>
+                                    <span className="font-bold text-[#202020]">{(item as { bold: string; text: string }).bold}</span>
                                     {(item as { bold: string; text: string }).text}
                                   </li>
                                 ))}
                               </ol>
                             );
-
                           if (block.type === "ul" && block.items)
                             return (
                               <ul key={i} className="flex flex-col gap-1.5 list-disc pl-6">
                                 {block.items.map((item, j) => (
-                                  <li key={j}>
-                                    {typeof item === "string" ? item : item.text}
-                                  </li>
+                                  <li key={j}>{typeof item === "string" ? item : item.text}</li>
                                 ))}
                               </ul>
                             );
-
                           return null;
                         })}
                       </div>
 
                       <div className="flex justify-end mt-8">
                         <button
-                          onClick={() => {
-                            const allLessonIds = SECTIONS
-                              .flatMap((s) => s.lessons)
-                              .filter((l) => l.type !== "quiz")
-                              .map((l) => l.id);
-
-                            const willBeCompleted = new Set([...completedLessons, activeLesson]);
-
-                            handleToggleComplete(activeLesson);
-
-                            if (allLessonIds.every((id) => willBeCompleted.has(id))) {
-                              setCourseCompleted(true);
-                              setActiveSection("assessment");
-                              setActiveLesson("5-quiz");
-                              setShowQuiz(true);
-                            }
-                          }}
+                          onClick={handleMarkCurrentComplete}
                           className={[
                             "px-6 py-3 text-base font-[400] rounded-lg border transition-colors",
                             completedLessons.has(activeLesson)
@@ -767,35 +947,43 @@ export default function CourseLearningPage() {
             <div className="w-full max-w-[407px] flex-shrink-0">
               <div className="bg-white rounded-2xl border border-[#F0F0F0] overflow-hidden">
                 <div className="px-4 py-3.5 border-b border-[#F0F0F0]">
-                  <p className="text-sm font-semibold text-[#202020]">
-                    Lessons ({completedLessons.size}/{TOTAL_LESSONS})
-                  </p>
+                  {courseLoading ? (
+                    <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  ) : (
+                    <p className="text-sm font-semibold text-[#202020]">
+                      Lessons ({completedLessons.size}/{totalLessons})
+                    </p>
+                  )}
                 </div>
+
                 <div className="overflow-y-auto max-h-[calc(100vh-180px)]">
-                  {SECTIONS.map((section) => {
-                    // Hide introduction section when course is completed
-                    if (courseCompleted && section.id === "introduction") return null;
+                  {courseLoading ? (
+                    <div className="p-4 space-y-3">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    sections.map((section) => {
+                      if (courseCompleted && section.id === "introduction") return null;
+                      if (courseCompleted && section.lessons.length > 0 && section.id !== "assessment") return null;
 
-                    // Hide sections with lessons (other than assessment) when course is completed
-                    if (courseCompleted && section.lessons.length > 0 && section.id !== "assessment") {
-                      return null;
-                    }
-
-                    return (
-                      <SidebarSection
-                        key={section.id}
-                        section={section}
-                        activeSection={activeSection}
-                        setActiveSection={setActiveSection}
-                        activeLesson={activeLesson}
-                        onSelectLesson={setActiveLesson}
-                        completedLessons={completedLessons}
-                        onToggleComplete={handleToggleComplete}
-                        isCourseCompleted={courseCompleted}
-                        forceOpen={courseCompleted && section.id === "assessment"}
-                      />
-                    );
-                  })}
+                      return (
+                        <SidebarSection
+                          key={section.id}
+                          section={section}
+                          activeSection={activeSection}
+                          setActiveSection={setActiveSection}
+                          activeLesson={activeLesson}
+                          onSelectLesson={setActiveLesson}
+                          completedLessons={completedLessons}
+                          onToggleComplete={handleToggleComplete}
+                          isCourseCompleted={courseCompleted}
+                          forceOpen={courseCompleted && section.id === "assessment"}
+                        />
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>

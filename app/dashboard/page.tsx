@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
+import type { RootState } from "../store/store";
+import { clearUser } from "../store/userSlice";
 import Link from "next/link";
 import Image from "next/image";
+import { useGetCoursesQuery } from "../store/apiSlice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Course {
@@ -20,67 +25,12 @@ interface NavItem {
   active?: boolean;
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const COURSES: Course[] = [
-  {
-    id: "1",
-    title: "Effective Workplace Communication",
-    description:
-      "Upon completion of this module, participants will: Implement practical communication techniques, a...",
-    category: "Soft Skill",
-    image: "/images/course1.png",
-  },
-  {
-    id: "2",
-    title: "Mastering Interpersonal Skills",
-    description:
-      "Upon completion of this module, participants will: Implement practical communication techniques, a...",
-    category: "Compliance & Policy",
-    image: "/images/course2.png",
-  },
-  {
-    id: "3",
-    title: "Strengthening Team Cohesion",
-    description:
-      "Upon completion of this module, participants will: Implement practical communication techniques, a...",
-    category: "Soft Skill",
-    image: "/images/course3.png",
-  },
-  {
-    id: "4",
-    title: "Enhancing Team Dialogue",
-    description:
-      "Upon completion of this module, participants will: Implement practical communication techniques, a...",
-    category: "Digital Skills",
-    image: "/images/course4.png",
-  },
-  {
-    id: "5",
-    title: "Optimizing Group Dynamics",
-    description:
-      "Upon completion of this module, participants will: Implement practical communication techniques, a...",
-    category: "Business & Strategy",
-    image: "/images/course5.png",
-  },
-  {
-    id: "6",
-    title: "Cultivating Open Communication",
-    description:
-      "Upon completion of this module, participants will: Implement practical communication techniques, a...",
-    category: "Onboarding",
-    image: "/images/course6.png",
-  },
-];
-
 // ─── Icon Components ──────────────────────────────────────────────────────────
 const DashboardIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path
       d="M6.01594 1.89214L2.4226 4.69214C1.8226 5.15881 1.33594 6.15214 1.33594 6.90547V11.8455C1.33594 13.3921 2.59594 14.6588 4.1426 14.6588H11.8626C13.4093 14.6588 14.6693 13.3921 14.6693 11.8521V6.99881C14.6693 6.19214 14.1293 5.15881 13.4693 4.69881L9.34927 1.81214C8.41594 1.15881 6.91594 1.19214 6.01594 1.89214Z"
-      stroke="#636363"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      stroke="#636363" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
     />
     <path d="M7 12H9C10.1 12 11 11.1 11 10V8C11 6.9 10.1 6 9 6H7C5.9 6 5 6.9 5 8V10C5 11.1 5.9 12 7 12Z" stroke="#636363" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M8 6V12" stroke="#636363" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -92,10 +42,7 @@ const CoursesIcon = ({ active }: { active?: boolean }) => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
     <path
       d="M17.9297 13.981V4.92854C17.9297 4.02854 17.1947 3.36104 16.3022 3.43604H16.2572C14.6822 3.57104 12.2897 4.37355 10.9547 5.21355L10.8272 5.29604C10.6097 5.43104 10.2497 5.43104 10.0322 5.29604L9.84469 5.18355C8.50969 4.35105 6.12469 3.55604 4.54969 3.42854C3.65719 3.35354 2.92969 4.02854 2.92969 4.92104V13.981C2.92969 14.701 3.51469 15.376 4.23469 15.466L4.45219 15.496C6.07969 15.7135 8.59219 16.5385 10.0322 17.326L10.0622 17.341C10.2647 17.4535 10.5872 17.4535 10.7822 17.341C12.2222 16.546 14.7422 15.7135 16.3772 15.496L16.6247 15.466C17.3447 15.376 17.9297 14.701 17.9297 13.981Z"
-      stroke={active ? "#0A60E1" : "#636363"}
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      stroke={active ? "#0A60E1" : "#636363"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
     />
     <path d="M10.4248 5.54199V16.792" stroke="#636363" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M7.23926 7.79297H5.55176" stroke="#636363" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -172,27 +119,170 @@ const TrendUpIcon = () => (
   <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
     <path
       d="M3.09022 5.02543H6.76763M1.25 11.25L4.68601 7.86637C4.81821 7.73619 5.02473 7.7215 5.17379 7.83175L7.82744 9.7945C7.98375 9.91019 8.20181 9.88775 8.33162 9.74269L13.3031 4.18914M11.3178 3.75H13.0816C13.4241 3.75 13.7037 4.02548 13.7107 4.36987L13.75 6.29056"
-      stroke="#00B000"
-      strokeWidth="0.9375"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      stroke="#00B000" strokeWidth="0.9375" strokeLinecap="round" strokeLinejoin="round"
     />
   </svg>
 );
 
-// ─── User Data ────────────────────────────────────────────────────────────────
-const user = {
-  name: "Madison Greg",
-  email: "Madison.reertr...",
-  image: "/images/Avatars.png",
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const getInitials = (name?: string) =>
+  (name || "User").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
-const getInitials = (name: string) =>
-  name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+// ─── User Dropdown Menu ───────────────────────────────────────────────────────
+function UserMenu() {
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const user = useSelector((state: RootState) => state.user) ?? {
+    name: "Guest",
+    email: "guest@example.com",
+  };
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleLogout = () => {
+    dispatch(clearUser());
+    router.push("/");
+  };
+
+  return (
+    <div ref={ref} className="relative flex items-center gap-2 pl-2 border-l border-gray-100">
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex items-center gap-2 cursor-pointer group"
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="User menu"
+      >
+        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+          <Image
+            src={user.avatar || "/images/Avatars.png"}
+            alt={user.name || "User"}
+            fill
+            className="object-cover"
+            sizes="48px"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+          <span className="absolute inset-0 flex items-center justify-center">
+            {getInitials(user.name)}
+          </span>
+        </div>
+        <div className="hidden sm:block text-left">
+          <p className="text-base font-medium text-[#202020] leading-none mb-1.5">
+            {user.name || "User"}
+          </p>
+          <p className="text-sm font-normal text-[#636363] leading-none truncate max-w-[100px]">
+            {user.email || "—"}
+          </p>
+        </div>
+        <span className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          <ChevronDownIcon />
+        </span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+10px)] w-64 bg-white rounded-2xl border border-[#F0F0F0] shadow-[0_8px_30px_rgba(0,0,0,0.10)] z-50 overflow-hidden"
+          role="menu"
+          aria-label="User options"
+        >
+          {/* User info header */}
+          <div className="px-4 py-4 border-b border-[#F0F0F0]">
+            <div className="flex items-center gap-3">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                <Image
+                  src={user.avatar || "/images/Avatars.png"}
+                  alt={user.name || "User"}
+                  fill
+                  className="object-cover"
+                  sizes="40px"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center text-xs">
+                  {getInitials(user.name)}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#202020] truncate">{user.name || "User"}</p>
+                <p className="text-xs text-[#636363] truncate">{user.email || "—"}</p>
+                {user.role && (
+                  <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-medium text-[#0A60E1] bg-[#EAF3FF] rounded-full capitalize">
+                    {user.role}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Menu items */}
+          <div className="py-2">
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); }}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#636363] hover:bg-[#F5F6FA] hover:text-[#202020] transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 10.8334C12.3012 10.8334 14.1667 8.96788 14.1667 6.66669C14.1667 4.3655 12.3012 2.50002 10 2.50002C7.69882 2.50002 5.83334 4.3655 5.83334 6.66669C5.83334 8.96788 7.69882 10.8334 10 10.8334Z" stroke="#636363" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M17.1584 17.5C17.1584 14.425 13.95 11.9584 10 11.9584C6.05002 11.9584 2.84167 14.425 2.84167 17.5" stroke="#636363" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              My Profile
+            </button>
+
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); }}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#636363] hover:bg-[#F5F6FA] hover:text-[#202020] transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 12.5C11.3807 12.5 12.5 11.3807 12.5 10C12.5 8.61929 11.3807 7.5 10 7.5C8.61929 7.5 7.5 8.61929 7.5 10C7.5 11.3807 8.61929 12.5 10 12.5Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M1.66699 10.7329V9.26621C1.66699 8.39954 2.37533 7.68287 3.25033 7.68287C4.75866 7.68287 5.37533 6.61621 4.61699 5.30787C4.18366 4.55787 4.44199 3.58287 5.20033 3.14954L6.64199 2.32454C7.30033 1.93287 8.15033 2.16621 8.54199 2.82454L8.63366 2.98287C9.38366 4.29121 10.617 4.29121 11.3753 2.98287L11.467 2.82454C11.8587 2.16621 12.7087 1.93287 13.367 2.32454L14.8087 3.14954C15.567 3.58287 15.8253 4.55787 15.392 5.30787C14.6337 6.61621 15.2503 7.68287 16.7587 7.68287C17.6253 7.68287 18.342 8.39121 18.342 9.26621V10.7329C18.342 11.5995 17.6337 12.3162 16.7587 12.3162C15.2503 12.3162 14.6337 13.3829 15.392 14.6912C15.8253 15.4495 15.567 16.4162 14.8087 16.8495L13.367 17.6745C12.7087 18.0662 11.8587 17.8329 11.467 17.1745L11.3753 17.0162C10.6253 15.7079 9.39199 15.7079 8.63366 17.0162L8.54199 17.1745C8.15033 17.8329 7.30033 18.0662 6.64199 17.6745L5.20033 16.8495C4.44199 16.4162 4.18366 15.4412 4.61699 14.6912C5.37533 13.3829 4.75866 12.3162 3.25033 12.3162C2.37533 12.3162 1.66699 11.5995 1.66699 10.7329Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Account Settings
+            </button>
+          </div>
+
+          {/* Divider + Logout */}
+          <div className="border-t border-[#F0F0F0] py-2">
+            <button
+              role="menuitem"
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M7.41675 6.29999C7.67508 3.29999 9.21675 2.07499 12.5917 2.07499H12.7001C16.4251 2.07499 17.9167 3.56665 17.9167 7.29165V12.725C17.9167 16.45 16.4251 17.9417 12.7001 17.9417H12.5917C9.24175 17.9417 7.70008 16.7333 7.42508 13.7833" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12.5001 10H3.01672" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4.87507 7.20834L2.08340 10L4.87507 12.7917" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Main Dashboard Page ──────────────────────────────────────────────────────
 export default function DashboardPage() {
@@ -200,20 +290,21 @@ export default function DashboardPage() {
   const [headerSearch, setHeaderSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const filteredCourses = COURSES.filter(
-    (c) =>
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.category.toLowerCase().includes(search.toLowerCase())
+  const user = useSelector((state: RootState) => state.user) ?? {
+    name: "Guest",
+    email: "guest@example.com",
+  };
+
+  const { data: courses = [], isLoading, isError, error } = useGetCoursesQuery();
+
+  const filteredCourses = courses.filter((c: Course) =>
+    c.title.toLowerCase().includes(search.toLowerCase()) ||
+    c.category.toLowerCase().includes(search.toLowerCase())
   );
 
   const navItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: <DashboardIcon /> },
-    {
-      label: "Courses/Materials",
-      href: "/dashboard",
-      icon: <CoursesIcon active />,
-      active: true,
-    },
+    { label: "Courses/Materials", href: "/dashboard", icon: <CoursesIcon active />, active: true },
     { label: "Classes", href: "#", icon: <ClassesIcon /> },
     { label: "Assessments", href: "#", icon: <AssessmentsIcon /> },
     { label: "My Certification", href: "#", icon: <CertificationIcon /> },
@@ -231,22 +322,10 @@ export default function DashboardPage() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         ].join(" ")}
       >
-        {/* Logo */}
         <div className="flex items-center py-5 border-b border-[#F0F0F0]">
-          <Image
-            src="/icons/logo.svg"
-            alt="Soludesks logo"
-            width={136}
-            height={36}
-            priority
-          />
+          <Image src="/icons/logo.svg" alt="Soludesks logo" width={136} height={36} priority />
         </div>
-
-        {/* Nav */}
-        <nav
-          className="flex flex-col flex-1 gap-5 px-4 py-4"
-          aria-label="Sidebar navigation"
-        >
+        <nav className="flex flex-col flex-1 gap-5 px-4 py-4" aria-label="Sidebar navigation">
           {navItems.map((item) => (
             <Link
               key={item.label}
@@ -265,13 +344,8 @@ export default function DashboardPage() {
         </nav>
       </aside>
 
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
+        <div className="fixed inset-0 z-30 bg-black/20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       )}
 
       {/* ── Main content ── */}
@@ -279,22 +353,13 @@ export default function DashboardPage() {
         {/* ── Top Navbar ── */}
         <header className="flex flex-shrink-0 items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100">
           <div className="flex flex-1 items-center gap-3">
-            {/* Mobile hamburger */}
-            <button
-              className="p-2 text-gray-400 hover:text-gray-600 lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open menu"
-            >
+            <button className="p-2 text-gray-400 hover:text-gray-600 lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-
-            {/* Header search */}
             <div className="relative w-full max-w-xs">
-              <label htmlFor="header-search" className="sr-only">
-                Search Soludesk
-              </label>
+              <label htmlFor="header-search" className="sr-only">Search Soludesk</label>
               <input
                 id="header-search"
                 type="search"
@@ -307,13 +372,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right actions */}
           <div className="flex items-center gap-2">
             {/* Chat */}
-            <button
-              className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors"
-              aria-label="Messages"
-            >
+            <button className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors" aria-label="Messages">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M22 10V13C22 17 20 19 16 19H15.5C15.19 19 14.89 19.15 14.7 19.4L13.2 21.4C12.54 22.28 11.46 22.28 10.8 21.4L9.3 19.4C9.14 19.18 8.77 19 8.5 19H8C4 19 2 18 2 13V8C2 4 4 2 8 2H14" stroke="#0A60E1" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M19.5 7C20.8807 7 22 5.88071 22 4.5C22 3.11929 20.8807 2 19.5 2C18.1193 2 17 3.11929 17 4.5C17 5.88071 18.1193 7 19.5 7Z" fill="#0A60E1" stroke="#0A60E1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -324,10 +385,7 @@ export default function DashboardPage() {
             </button>
 
             {/* Notifications */}
-            <button
-              className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors"
-              aria-label="Notifications — 4 unread"
-            >
+            <button className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors" aria-label="Notifications — 4 unread">
               <svg width="25" height="28" viewBox="0 0 25 28" fill="none" aria-hidden="true">
                 <path d="M12.0196 6.91016C8.7096 6.91016 6.0196 9.60016 6.0196 12.9102V15.8002C6.0196 16.4102 5.7596 17.3402 5.4496 17.8602L4.2996 19.7702C3.5896 20.9502 4.0796 22.2602 5.3796 22.7002C9.6896 24.1402 14.3396 24.1402 18.6496 22.7002C19.8596 22.3002 20.3896 20.8702 19.7296 19.7702L18.5796 17.8602C18.2796 17.3402 18.0196 16.4102 18.0196 15.8002V12.9102C18.0196 9.61016 15.3196 6.91016 12.0196 6.91016Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" />
                 <path d="M13.8699 7.19945C13.5599 7.10945 13.2399 7.03945 12.9099 6.99945C11.9499 6.87945 11.0299 6.94945 10.1699 7.19945C10.4599 6.45945 11.1799 5.93945 12.0199 5.93945C12.8599 5.93945 13.5799 6.45945 13.8699 7.19945Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
@@ -338,48 +396,21 @@ export default function DashboardPage() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#e84c1e] rounded-full" aria-hidden="true" />
             </button>
 
-            {/* User avatar */}
-            <div className="flex items-center gap-2 pl-2 border-l border-gray-100 cursor-pointer group">
-              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                {user.image ? (
-                  <Image
-                    src={user.image}
-                    alt={user.name}
-                    fill
-                    className="object-cover"
-                    sizes="48px"
-                  />
-                ) : (
-                  getInitials(user.name)
-                )}
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-base font-medium text-[#202020] leading-none mb-1.5">
-                  {user.name}
-                </p>
-                <p className="text-sm font-normal text-[#636363] leading-none truncate max-w-[100px]">
-                  {user.email}
-                </p>
-              </div>
-              <ChevronDownIcon />
-            </div>
+            {/* ── User Menu with Logout Dropdown ── */}
+            <UserMenu />
           </div>
         </header>
 
         {/* ── Page content ── */}
         <main className="flex-1 bg-white">
           <div className="px-6 py-6 max-w-7xl">
-            {/* Page title */}
             <div className="mb-6">
               <h1 className="text-2xl font-medium text-[#202020]">Course Management</h1>
-              <p className="mt-0.5 text-sm text-[#636363]">
-                Create, organize, and assign courses to teams and individuals
-              </p>
+              <p className="mt-0.5 text-sm text-[#636363]">Create, organize, and assign courses to teams and individuals</p>
             </div>
 
             {/* ── Stat cards ── */}
             <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-3">
-              {/* Total Courses */}
               <div className="flex items-center gap-4 p-3 bg-white rounded-lg border-4 border-[#FDFDFD]">
                 <div className="flex flex-shrink-0 items-center justify-center w-12 h-12 rounded-xl bg-purple-50">
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
@@ -400,11 +431,10 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-base font-medium text-[#636363]">Total courses</p>
-                  <p className="text-2xl font-medium text-[#202020]">123</p>
+                  <p className="text-2xl font-medium text-[#202020]">{isLoading ? "—" : courses.length}</p>
                 </div>
               </div>
 
-              {/* Total Enrollments */}
               <div className="flex items-center gap-4 p-3 bg-white rounded-lg border-4 border-[#FDFDFD]">
                 <div className="flex flex-shrink-0 items-center justify-center w-12 h-12 rounded-xl bg-blue-50">
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
@@ -424,11 +454,10 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-base font-medium text-[#636363]">Total Enrollments</p>
-                  <p className="text-2xl font-medium text-[#202020]">11</p>
+                  <p className="text-2xl font-medium text-[#202020]">347</p>
                 </div>
               </div>
 
-              {/* Avg Completion */}
               <div className="flex items-center gap-4 p-3 bg-white rounded-lg border-4 border-[#FDFDFD]">
                 <div className="flex flex-shrink-0 items-center justify-center w-12 h-12 rounded-xl bg-orange-50">
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
@@ -452,10 +481,10 @@ export default function DashboardPage() {
                 <div className="flex-1">
                   <p className="text-base font-medium text-[#636363]">Avg Completion</p>
                   <div className="flex items-end gap-3">
-                    <p className="text-2xl font-medium text-[#202020]">99%</p>
+                    <p className="text-2xl font-medium text-[#202020]">92%</p>
                     <span className="flex items-center gap-0.5 pb-1 ml-auto text-[10px] font-normal text-[#00B000]">
                       <TrendUpIcon />
-                      12% up from last month
+                      5% up from last month
                     </span>
                   </div>
                 </div>
@@ -465,9 +494,7 @@ export default function DashboardPage() {
             {/* ── Search + Filters ── */}
             <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center">
               <div className="relative w-full max-w-[681px]">
-                <label htmlFor="course-search" className="sr-only">
-                  Search Course
-                </label>
+                <label htmlFor="course-search" className="sr-only">Search Course</label>
                 <input
                   id="course-search"
                   type="search"
@@ -478,32 +505,38 @@ export default function DashboardPage() {
                 />
                 <SearchIcon />
               </div>
-
               <div className="flex gap-2 sm:ml-auto">
                 <button className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#636363] rounded-full border border-[#E8E8E8] hover:bg-gray-50 transition-all">
-                  Date
-                  <CalendarIcon />
+                  Date <CalendarIcon />
                 </button>
                 <button className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 rounded-full border border-[#E8E8E8] hover:bg-gray-50 transition-all">
-                  Category
-                  <ChevronDownIcon />
+                  Category <ChevronDownIcon />
                 </button>
               </div>
             </div>
 
             {/* ── Course Grid ── */}
-            <div className="grid grid-cols-1 gap-5 mb-8 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredCourses.map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-              {filteredCourses.length === 0 && (
-                <div className="col-span-3 py-16 text-center text-gray-400">
-                  No courses match your search.
-                </div>
-              )}
-            </div>
+            {isLoading ? (
+              <div className="grid grid-cols-1 gap-5 mb-8 sm:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="h-80 bg-gray-100 rounded-2xl animate-pulse" />
+                ))}
+              </div>
+            ) : isError ? (
+              <div className="mb-8 py-16 text-center text-red-600 bg-red-50/50 rounded-2xl border border-red-100">
+                <p className="text-lg font-medium">Failed to load courses</p>
+                <p className="mt-2 text-sm">{(error as any)?.data?.message || "Please check your connection and try again."}</p>
+              </div>
+            ) : filteredCourses.length === 0 ? (
+              <div className="mb-8 py-16 text-center text-gray-400">No courses match your search.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 mb-8 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredCourses.map((course: Course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            )}
 
-            {/* ── Pagination ── */}
             <Pagination />
           </div>
         </main>
@@ -517,32 +550,28 @@ function CourseCard({ course }: { course: Course }) {
   const href = course.id === "1" ? "/courses/effective-workplace-communication" : "#";
   return (
     <Link href={href} className="block">
-    <article className="overflow-hidden bg-white rounded-2xl border border-gray-100 cursor-pointer group hover:shadow-md transition-all duration-200">
-      <div className="relative h-44 overflow-hidden bg-gray-100">
-        <Image
-          src={course.image}
-          alt={course.title}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = "https://placehold.co/400x220/e2e8f0/94a3b8?text=Course";
-          }}
-        />
-      </div>
-      <div className="p-4">
-        <h3 className="mb-1.5 text-base font-semibold text-[#202020] leading-snug">
-          {course.title}
-        </h3>
-        <p className="mb-3 text-sm font-normal text-[#636363] leading-relaxed line-clamp-2">
-          {course.description}
-        </p>
-        <span className="inline-block px-4 py-1 text-sm font-medium text-[#636363] bg-[#E8E8E8] rounded-full">
-          {course.category}
-        </span>
-      </div>
-    </article>
+      <article className="overflow-hidden bg-white rounded-2xl border border-gray-100 cursor-pointer group hover:shadow-md transition-all duration-200">
+        <div className="relative h-44 overflow-hidden bg-gray-100">
+          <Image
+            src={course.image}
+            alt={course.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = "https://placehold.co/400x220/e2e8f0/94a3b8?text=Course";
+            }}
+          />
+        </div>
+        <div className="p-4">
+          <h3 className="mb-1.5 text-base font-semibold text-[#202020] leading-snug">{course.title}</h3>
+          <p className="mb-3 text-sm font-normal text-[#636363] leading-relaxed line-clamp-2">{course.description}</p>
+          <span className="inline-block px-4 py-1 text-sm font-medium text-[#636363] bg-[#E8E8E8] rounded-full">
+            {course.category}
+          </span>
+        </div>
+      </article>
     </Link>
   );
 }
@@ -554,11 +583,8 @@ function Pagination() {
 
   return (
     <div className="flex flex-col gap-4 py-4 border-t border-gray-100 sm:flex-row sm:items-center sm:justify-between">
-      {/* Show per page */}
       <div className="flex items-center gap-2">
-        <label htmlFor="per-page" className="sr-only">
-          Results per page
-        </label>
+        <label htmlFor="per-page" className="sr-only">Results per page</label>
         <div className="relative inline-flex items-center">
           <select
             id="per-page"
@@ -569,20 +595,12 @@ function Pagination() {
             <option>Show 20/page</option>
             <option>Show 50/page</option>
           </select>
-          <svg
-            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-          >
+          <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" stroke="#636363" />
           </svg>
         </div>
       </div>
 
-      {/* Page numbers */}
       <nav aria-label="Pagination" className="flex items-center gap-1.5">
         <button
           className="px-3 py-1.5 text-base text-[#8C8C8C] hover:text-gray-700 transition-colors"
@@ -592,7 +610,6 @@ function Pagination() {
         >
           Prev
         </button>
-
         {pages.map((p) => (
           <button
             key={p}
@@ -601,19 +618,13 @@ function Pagination() {
             aria-current={activePage === p ? "page" : undefined}
             className={[
               "w-8 h-8 rounded-full text-sm font-medium transition-all",
-              activePage === p
-                ? "bg-[#0A60E1] text-white"
-                : "border border-[#0A60E1] text-gray-500 hover:border-gray-400",
+              activePage === p ? "bg-[#0A60E1] text-white" : "border border-[#0A60E1] text-gray-500 hover:border-gray-400",
             ].join(" ")}
           >
             {String(p).padStart(2, "0")}
           </button>
         ))}
-
-        <span className="w-8 h-8 rounded-full px-1 text-sm text-[#0A60E1]" aria-hidden="true">
-          …
-        </span>
-
+        <span className="w-8 h-8 rounded-full px-1 text-sm text-[#0A60E1]" aria-hidden="true">…</span>
         <button
           onClick={() => setActivePage(24)}
           aria-label="Page 24"
@@ -625,7 +636,6 @@ function Pagination() {
         >
           24
         </button>
-
         <button
           className="px-3 py-1.5 text-base font-medium text-[#0A60E1] hover:underline transition-colors"
           onClick={() => setActivePage(Math.min(24, activePage + 1))}

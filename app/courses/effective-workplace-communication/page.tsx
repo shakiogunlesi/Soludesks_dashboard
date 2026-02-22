@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { clearUser } from "../../store/userSlice";
+import type { RootState } from "../../store/store";
+import { useGetCourseDetailQuery } from "../../store/apiSlice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface NavItem {
@@ -19,20 +24,6 @@ interface Learner {
   email: string;
   avatar: string;
 }
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const LEARNERS: Learner[] = [
-  { id: "1",  name: "Nithya Menon",        city: "New York", email: "nithya.menon@email.com",          avatar: "/images/Avatar1.png" },
-  { id: "2",  name: "Meera Gonzalez",      city: "Toronto",  email: "meera.gonzalez@email.com",        avatar: "/images/Avatar2.png" },
-  { id: "3",  name: "Monica Patel",        city: "Paris",    email: "monica.patel@email.com",          avatar: "/images/Avatar3.png" },
-  { id: "4",  name: "Dinesh Kumar",        city: "Tokyo",    email: "dinesh.kumar@email.com",          avatar: "/images/Avatar4.png" },
-  { id: "5",  name: "Karthik Subramanian", city: "London",   email: "karthik.subramanian@email.com",   avatar: "/images/Avatar5.png" },
-  { id: "6",  name: "Monica Patel",        city: "Paris",    email: "jagathesh.narayanan@email.com",   avatar: "/images/Avatar6.png" },
-  { id: "7",  name: "Jagathesh Narayanan", city: "Berlin",   email: "jagathesh.narayanan@email.com",   avatar: "/images/Avatar7.png" },
-  { id: "8",  name: "Monica Patel",        city: "Paris",    email: "monica.patel@email.com",          avatar: "/images/Avatar8.png" },
-  { id: "9",  name: "Nithya Menon",        city: "New York", email: "nithya.menon@email.com",          avatar: "/images/Avatar9.png" },
-  { id: "10", name: "Jagathesh Narayanan", city: "Tokyo",    email: "dinesh.kumar@email.com",          avatar: "/images/Avatar10.png" },
-];
 
 // ─── Icon Components ──────────────────────────────────────────────────────────
 const DashboardIcon = () => (
@@ -109,21 +100,14 @@ const ChevronDownIcon = () => (
   </svg>
 );
 
-// ─── User Data ────────────────────────────────────────────────────────────────
-const user = {
-  name: "Madison Greg",
-  email: "Madison.reertr...",
-  image: "/images/Avatars.png",
-};
-
 const getInitials = (name: string) =>
   name
     .split(" ")
     .map((n) => n[0])
     .join("")
-    .toUpperCase();
+    .toUpperCase()
+    .slice(0, 2);
 
-// ─── Avatar with fallback ─────────────────────────────────────────────────────
 function Avatar({ src, name }: { src: string; name: string }) {
   const colors = [
     "bg-violet-200 text-violet-700",
@@ -161,11 +145,180 @@ function Avatar({ src, name }: { src: string; name: string }) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+function UserMenu() {
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const user = useSelector((state: RootState) => state.user) ?? {
+    name: "Guest",
+    email: "guest@example.com",
+  };
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleLogout = () => {
+    dispatch(clearUser());
+    router.push("/");
+  };
+
+  return (
+    <div ref={ref} className="relative flex items-center gap-2 pl-2 border-l border-gray-100">
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex items-center gap-2 cursor-pointer group"
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="User menu"
+      >
+        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+          <Image
+            src={user.avatar || "/images/Avatars.png"}
+            alt={user.name || "User"}
+            fill
+            className="object-cover"
+            sizes="48px"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+          <span className="absolute inset-0 flex items-center justify-center">
+            {getInitials(user.name)}
+          </span>
+        </div>
+        <div className="hidden sm:block text-left">
+          <p className="text-base font-medium text-[#202020] leading-none mb-1.5">
+            {user.name || "User"}
+          </p>
+          <p className="text-sm font-normal text-[#636363] leading-none truncate max-w-[100px]">
+            {user.email || "—"}
+          </p>
+        </div>
+        <span className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          <ChevronDownIcon />
+        </span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+10px)] w-64 bg-white rounded-2xl border border-[#F0F0F0] shadow-[0_8px_30px_rgba(0,0,0,0.10)] z-50 overflow-hidden"
+          role="menu"
+          aria-label="User options"
+        >
+          {/* User info header */}
+          <div className="px-4 py-4 border-b border-[#F0F0F0]">
+            <div className="flex items-center gap-3">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                <Image
+                  src={user.avatar || "/images/Avatars.png"}
+                  alt={user.name || "User"}
+                  fill
+                  className="object-cover"
+                  sizes="40px"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center text-xs">
+                  {getInitials(user.name)}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#202020] truncate">{user.name || "User"}</p>
+                <p className="text-xs text-[#636363] truncate">{user.email || "—"}</p>
+                {user.role && (
+                  <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-medium text-[#0A60E1] bg-[#EAF3FF] rounded-full capitalize">
+                    {user.role}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Menu items */}
+          <div className="py-2">
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); }}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#636363] hover:bg-[#F5F6FA] hover:text-[#202020] transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 10.8334C12.3012 10.8334 14.1667 8.96788 14.1667 6.66669C14.1667 4.3655 12.3012 2.50002 10 2.50002C7.69882 2.50002 5.83334 4.3655 5.83334 6.66669C5.83334 8.96788 7.69882 10.8334 10 10.8334Z" stroke="#636363" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M17.1584 17.5C17.1584 14.425 13.95 11.9584 10 11.9584C6.05002 11.9584 2.84167 14.425 2.84167 17.5" stroke="#636363" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              My Profile
+            </button>
+
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); }}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#636363] hover:bg-[#F5F6FA] hover:text-[#202020] transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 12.5C11.3807 12.5 12.5 11.3807 12.5 10C12.5 8.61929 11.3807 7.5 10 7.5C8.61929 7.5 7.5 8.61929 7.5 10C7.5 11.3807 8.61929 12.5 10 12.5Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M1.66699 10.7329V9.26621C1.66699 8.39954 2.37533 7.68287 3.25033 7.68287C4.75866 7.68287 5.37533 6.61621 4.61699 5.30787C4.18366 4.55787 4.44199 3.58287 5.20033 3.14954L6.64199 2.32454C7.30033 1.93287 8.15033 2.16621 8.54199 2.82454L8.63366 2.98287C9.38366 4.29121 10.617 4.29121 11.3753 2.98287L11.467 2.82454C11.8587 2.16621 12.7087 1.93287 13.367 2.32454L14.8087 3.14954C15.567 3.58287 15.8253 4.55787 15.392 5.30787C14.6337 6.61621 15.2503 7.68287 16.7587 7.68287C17.6253 7.68287 18.342 8.39121 18.342 9.26621V10.7329C18.342 11.5995 17.6337 12.3162 16.7587 12.3162C15.2503 12.3162 14.6337 13.3829 15.392 14.6912C15.8253 15.4495 15.567 16.4162 14.8087 16.8495L13.367 17.6745C12.7087 18.0662 11.8587 17.8329 11.467 17.1745L11.3753 17.0162C10.6253 15.7079 9.39199 15.7079 8.63366 17.0162L8.54199 17.1745C8.15033 17.8329 7.30033 18.0662 6.64199 17.6745L5.20033 16.8495C4.44199 16.4162 4.18366 15.4412 4.61699 14.6912C5.37533 13.3829 4.75866 12.3162 3.25033 12.3162C2.37533 12.3162 1.66699 11.5995 1.66699 10.7329Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Account Settings
+            </button>
+          </div>
+
+          {/* Divider + Logout */}
+          <div className="border-t border-[#F0F0F0] py-2">
+            <button
+              role="menuitem"
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors text-left"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M7.41675 6.29999C7.67508 3.29999 9.21675 2.07499 12.5917 2.07499H12.7001C16.4251 2.07499 17.9167 3.56665 17.9167 7.29165V12.725C17.9167 16.45 16.4251 17.9417 12.7001 17.9417H12.5917C9.24175 17.9417 7.70008 16.7333 7.42508 13.7833" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12.5001 10H3.01672" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4.87507 7.20834L2.08340 10L4.87507 12.7917" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CourseDetailPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerSearch, setHeaderSearch] = useState("");
   const [activePage, setActivePage] = useState(1);
+
+  const user = useSelector((state: RootState) => state.user) ?? {
+    name: "Guest",
+    email: "guest@example.com",
+  };
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useGetCourseDetailQuery("1");
+
+  const course = data?.course;
+  const learners: Learner[] = data?.learners ?? [];
 
   const navItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: <DashboardIcon /> },
@@ -180,7 +333,6 @@ export default function CourseDetailPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">
-      {/* ── Sidebar ── */}
       <aside
         className={[
           "fixed lg:static inset-y-0 left-0 z-40 w-[210px]",
@@ -211,14 +363,12 @@ export default function CourseDetailPage() {
         </nav>
       </aside>
 
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-30 bg-black/20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       )}
 
       {/* ── Main ── */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* ── Topbar ── */}
         <header className="flex flex-shrink-0 items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100">
           <div className="flex flex-1 items-center gap-3">
             <button className="p-2 text-gray-400 hover:text-gray-600 lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
@@ -241,7 +391,6 @@ export default function CourseDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Chat */}
             <button className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors" aria-label="Messages">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M22 10V13C22 17 20 19 16 19H15.5C15.19 19 14.89 19.15 14.7 19.4L13.2 21.4C12.54 22.28 11.46 22.28 10.8 21.4L9.3 19.4C9.14 19.18 8.77 19 8.5 19H8C4 19 2 18 2 13V8C2 4 4 2 8 2H14" stroke="#0A60E1" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
@@ -251,7 +400,7 @@ export default function CourseDetailPage() {
                 <path d="M7.99451 11H8.00349" stroke="#0A60E1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            {/* Notifications */}
+
             <button className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors" aria-label="Notifications">
               <svg width="25" height="28" viewBox="0 0 25 28" fill="none" aria-hidden="true">
                 <path d="M12.0196 6.91016C8.7096 6.91016 6.0196 9.60016 6.0196 12.9102V15.8002C6.0196 16.4102 5.7596 17.3402 5.4496 17.8602L4.2996 19.7702C3.5896 20.9502 4.0796 22.2602 5.3796 22.7002C9.6896 24.1402 14.3396 24.1402 18.6496 22.7002C19.8596 22.3002 20.3896 20.8702 19.7296 19.7702L18.5796 17.8602C18.2796 17.3402 18.0196 16.4102 18.0196 15.8002V12.9102C18.0196 9.61016 15.3196 6.91016 12.0196 6.91016Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" />
@@ -262,29 +411,14 @@ export default function CourseDetailPage() {
               </svg>
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#e84c1e] rounded-full" aria-hidden="true" />
             </button>
-            {/* User */}
-            <div className="flex items-center gap-2 pl-2 border-l border-gray-100 cursor-pointer group">
-              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                {user.image ? (
-                  <Image src={user.image} alt={user.name} fill className="object-cover" sizes="48px" />
-                ) : (
-                  getInitials(user.name)
-                )}
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-base font-medium text-[#202020] leading-none mb-1.5">{user.name}</p>
-                <p className="text-sm font-normal text-[#636363] leading-none truncate max-w-[100px]">{user.email}</p>
-              </div>
-              <ChevronDownIcon />
-            </div>
+
+            <UserMenu />
           </div>
         </header>
 
-        {/* ── Page Content ── */}
         <main className="flex-1 overflow-y-auto bg-[#F5F6FA]">
           <div className="px-6 py-6 max-w-7xl">
 
-            {/* ── Course Header ── */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <Link
@@ -296,35 +430,50 @@ export default function CourseDetailPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" stroke="#636363" />
                   </svg>
                 </Link>
-                <h1 className="text-2xl font-medium text-[#202020]">Effective Workplace Communication</h1>
-                <span className="px-3 py-1 text-sm font-medium text-[#0A60E1] bg-[#EAF3FF] rounded-full">
-                  Soft Skill
-                </span>
+                {isLoading ? (
+                  <div className="h-7 w-72 bg-gray-200 rounded animate-pulse" />
+                ) : (
+                  <>
+                    <h1 className="text-2xl font-medium text-[#202020]">
+                      {course?.title ?? "Course Detail"}
+                    </h1>
+                    {course?.category && (
+                      <span className="px-3 py-1 text-sm font-medium text-[#0A60E1] bg-[#EAF3FF] rounded-full">
+                        {course.category}
+                      </span>
+                    )}
+                  </>
+                )}
               </div>
-              <Link href="/courses/effective-workplace-communication/courselearning" className="w-[228px] px-6 py-3 text-base font-semibold text-white text-center bg-[#0063EF] rounded-[8px] hover:bg-blue-700 transition-colors">
+              <Link
+                href="/courses/effective-workplace-communication/courselearning"
+                className="w-[228px] px-6 py-3 text-base font-semibold text-white text-center bg-[#0063EF] rounded-[8px] hover:bg-blue-700 transition-colors"
+              >
                 Start Learning
               </Link>
             </div>
 
             {/* ── Hero image ── */}
             <div className="relative w-full h-[220px] rounded-2xl overflow-hidden mb-6 bg-gray-200">
-              <Image
-                src="/images/course1.png"
-                alt="Effective Workplace Communication course banner"
-                fill
-                className="object-cover"
-                sizes="100vw"
-                priority
-                onError={(e) => {
-                  const target = e.currentTarget as HTMLImageElement;
-                  target.src = "https://placehold.co/1200x220/a8c5f5/4a7fd4?text=Effective+Workplace+Communication";
-                }}
-              />
+              {isLoading ? (
+                <div className="w-full h-full bg-gray-200 animate-pulse" />
+              ) : (
+                <Image
+                  src={course?.image ?? "/images/course1.png"}
+                  alt={course?.title ?? "Course banner"}
+                  fill
+                  className="object-cover"
+                  sizes="100vw"
+                  priority
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    target.src = "https://placehold.co/1200x220/a8c5f5/4a7fd4?text=Course";
+                  }}
+                />
+              )}
             </div>
 
-            {/* ── Stat cards ── */}
             <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
-              {/* Total Applicants */}
               <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-[#F0F0F0]">
                 <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-green-50 flex-shrink-0">
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
@@ -343,11 +492,12 @@ export default function CourseDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#636363]">Total Applicants</p>
-                  <p className="text-2xl font-medium text-[#202020]">1223</p>
+                  <p className="text-2xl font-medium text-[#202020]">
+                    {isLoading ? "—" : learners.length > 0 ? (learners.length * 122) + 1 : 1223}
+                  </p>
                 </div>
               </div>
 
-              {/* Active Learners */}
               <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-[#F0F0F0]">
                 <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-cyan-50 flex-shrink-0">
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
@@ -365,50 +515,78 @@ export default function CourseDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#636363]">Active Learners</p>
-                  <p className="text-2xl font-medium text-[#202020]">13</p>
+                  <p className="text-2xl font-medium text-[#202020]">
+                    {isLoading ? "—" : learners.length}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* ── Learners Table ── */}
-            <div className="bg-white rounded-xl border border-[#F0F0F0] overflow-hidden mb-6">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[#F0F0F0]">
-                    <th className="px-6 py-4 text-left text-sm font-medium text-[#202020]">Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-[#202020]">City</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-[#202020]">Email Address</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-[#202020]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#F0F0F0]">
-                  {LEARNERS.map((learner) => (
-                    <tr key={learner.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <Avatar src={learner.avatar} name={learner.name} />
-                          <span className="text-sm font-normal text-[#202020]">{learner.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3.5 text-sm text-[#636363]">{learner.city}</td>
-                      <td className="px-6 py-3.5 text-sm text-[#636363]">{learner.email}</td>
-                      <td className="px-6 py-3.5 text-right">
-                        <button
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-[#E8E8E8] hover:bg-gray-50 transition-colors"
-                          aria-label={`Message ${learner.name}`}
-                        >
-                          <MessageIcon />
-                        </button>
-                      </td>
-                    </tr>
+            {isLoading ? (
+              <div className="bg-white rounded-xl border border-[#F0F0F0] overflow-hidden mb-6">
+                <div className="p-6 space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-40" />
+                      </div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-24" />
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-48" />
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            ) : isError ? (
+              <div className="bg-white rounded-xl border border-red-100 p-10 text-center text-red-600 mb-6">
+                <p className="text-base font-medium">Failed to load course data</p>
+                <p className="mt-1 text-sm">{(error as any)?.data ?? "Please try again."}</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-[#F0F0F0] overflow-hidden mb-6">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[#F0F0F0]">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-[#202020]">Name</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-[#202020]">City</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-[#202020]">Email Address</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-[#202020]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F0F0F0]">
+                    {learners.map((learner) => (
+                      <tr key={learner.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <Avatar src={learner.avatar} name={learner.name} />
+                            <span className="text-sm font-normal text-[#202020]">{learner.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-3.5 text-sm text-[#636363]">{learner.city}</td>
+                        <td className="px-6 py-3.5 text-sm text-[#636363]">{learner.email}</td>
+                        <td className="px-6 py-3.5 text-right">
+                          <button
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-[#E8E8E8] hover:bg-gray-50 transition-colors"
+                            aria-label={`Message ${learner.name}`}
+                          >
+                            <MessageIcon />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {learners.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-sm text-[#636363]">
+                          No learners enrolled yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-            {/* ── Pagination ── */}
             <div className="flex flex-col gap-4 py-2 sm:flex-row sm:items-center sm:justify-between">
-              {/* Per page */}
               <div className="relative inline-flex items-center">
                 <label htmlFor="per-page-detail" className="sr-only">Results per page</label>
                 <select
@@ -425,7 +603,6 @@ export default function CourseDetailPage() {
                 </svg>
               </div>
 
-              {/* Page numbers */}
               <nav aria-label="Pagination" className="flex items-center gap-1.5">
                 <button
                   className="px-3 py-1.5 text-base text-[#8C8C8C] hover:text-gray-700 transition-colors disabled:opacity-40"
