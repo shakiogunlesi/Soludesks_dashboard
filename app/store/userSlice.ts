@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-interface UserState {
+export interface UserState {
   id: string;
   name: string;
   email: string;
@@ -9,6 +9,15 @@ interface UserState {
   role?: string;
 }
 
+export interface UserProfile {
+  id?: string;         
+  name: string;
+  email: string;
+  avatar?: string;
+  role?: string;
+}
+
+// --- initial state ---
 const initialState: UserState = {
   id: "user-001",
   name: "Madison Greg",
@@ -16,6 +25,7 @@ const initialState: UserState = {
   isAuthenticated: true,
 };
 
+// --- Redux slice ---
 const userSlice = createSlice({
   name: "user",
   initialState,
@@ -31,6 +41,17 @@ const userSlice = createSlice({
     }),
   },
 });
+
+export function mapUserProfileToState(user: UserProfile): UserState {
+  return {
+    id: user.id ?? "user-unknown",      
+    name: user.name ?? "",
+    email: user.email ?? "",
+    avatar: user.avatar,
+    role: user.role,
+    isAuthenticated: true,
+  };
+}
 
 export const { setUser, clearUser } = userSlice.actions;
 export default userSlice.reducer;

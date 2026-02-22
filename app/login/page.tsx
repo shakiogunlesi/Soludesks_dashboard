@@ -8,6 +8,22 @@ import { useDispatch } from "react-redux";
 import { useLoginMutation } from "../store/apiSlice";
 import { setUser } from "../store/userSlice";
 
+interface UserProfile {
+  name: string;
+  email: string;
+  avatar?: string;
+  role?: string;
+}
+
+interface UserState {
+  id: string;
+  name: string;
+  email: string;
+  isAuthenticated: boolean;
+  avatar?: string;
+  role?: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const dispatch = useDispatch();
@@ -32,13 +48,27 @@ export default function LoginPage() {
         password: form.password,
       }).unwrap();
 
-      dispatch(setUser(result.user));
+      const apiUser: UserProfile = result.user;
 
+      const userState: UserState = {
+        id: apiUser.email,      
+        name: apiUser.name,
+        email: apiUser.email,
+        avatar: apiUser.avatar,
+        role: apiUser.role,
+        isAuthenticated: true,
+      };
+
+      dispatch(setUser(userState));
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(
-        err?.data ?? "Invalid email or password. Try shaki_ogunlesi@outlook.com / admin125@#"
-      );
+    } catch (err: unknown) {
+      if (typeof err === "object" && err !== null && "data" in err) {
+        setError((err as { data: string }).data);
+      } else {
+        setError(
+          "Invalid email or password. Try shaki_ogunlesi@outlook.com / admin125@#"
+        );
+      }
     }
   };
 
