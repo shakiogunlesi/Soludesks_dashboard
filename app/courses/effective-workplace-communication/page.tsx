@@ -9,7 +9,6 @@ import { clearUser } from "../../store/userSlice";
 import type { RootState } from "../../store/store";
 import { useGetCourseDetailQuery } from "../../store/apiSlice";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface NavItem {
   label: string;
   href: string;
@@ -25,7 +24,6 @@ interface Learner {
   avatar: string;
 }
 
-// ─── Icon Components ──────────────────────────────────────────────────────────
 const DashboardIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M6.01594 1.89214L2.4226 4.69214C1.8226 5.15881 1.33594 6.15214 1.33594 6.90547V11.8455C1.33594 13.3921 2.59594 14.6588 4.1426 14.6588H11.8626C13.4093 14.6588 14.6693 13.3921 14.6693 11.8521V6.99881C14.6693 6.19214 14.1293 5.15881 13.4693 4.69881L9.34927 1.81214C8.41594 1.15881 6.91594 1.19214 6.01594 1.89214Z" stroke="#636363" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -453,7 +451,6 @@ export default function CourseDetailPage() {
               </Link>
             </div>
 
-            {/* ── Hero image ── */}
             <div className="relative w-full h-[220px] rounded-2xl overflow-hidden mb-6 bg-gray-200">
               {isLoading ? (
                 <div className="w-full h-full bg-gray-200 animate-pulse" />

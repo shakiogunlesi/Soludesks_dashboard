@@ -32,7 +32,6 @@ export default function LoginPage() {
         password: form.password,
       }).unwrap();
 
-      // Persist the returned user profile into Redux so all pages can read it
       dispatch(setUser(result.user));
 
       router.push("/dashboard");
@@ -45,14 +44,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* ── Left panel (desktop) ── */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#0d1b4b] overflow-hidden flex-col items-center justify-center p-12">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-[#1a3a8a]/40 blur-3xl" />
           <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-[#e84c1e]/20 blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-white/5" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full border border-white/5" />
-          {/* Grid dots */}
           <svg className="absolute inset-0 w-full h-full opacity-10" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
@@ -63,13 +60,11 @@ export default function LoginPage() {
           </svg>
         </div>
 
-        {/* Content */}
         <div className="relative z-10 text-center max-w-md">
           <div className="flex items-center justify-center gap-3 mb-16">
             <Image src="/icons/logo.svg" alt="Soludesks logo" width={300} height={108} priority />
           </div>
 
-          {/* Illustration card */}
           <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-3xl p-8 mb-8">
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
@@ -111,10 +106,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ── Right panel (form) ── */}
       <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-md">
-          {/* Logo — mobile only */}
           <div className="flex items-center gap-2 mb-10 lg:hidden">
             <Image src="/icons/logo.svg" alt="Soludesks logo" width={300} height={100} priority />
           </div>
@@ -127,7 +120,6 @@ export default function LoginPage() {
             shaki_ogunlesi@outlook.com / admin125@#
           </div>
 
-          {/* Error message */}
           {error && (
             <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-6 text-xs text-red-600 flex items-center gap-2">
               <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,7 +130,6 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5" aria-label="Login form">
-            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-[#0d1b4b] mb-1.5">
                 Email Address
@@ -162,7 +153,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label htmlFor="password" className="block text-sm font-semibold text-[#0d1b4b]">
@@ -208,13 +198,11 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember me */}
             <div className="flex items-center gap-2">
               <input id="remember" type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-[#e84c1e]" />
               <label htmlFor="remember" className="text-sm text-gray-500">Keep me signed in</label>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -231,14 +219,12 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
           <div className="flex items-center gap-4 my-6">
             <div className="flex-1 h-px bg-gray-100" />
             <span className="text-xs text-gray-400">or continue with</span>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
 
-          {/* SSO buttons */}
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: "Google", icon: "G" },

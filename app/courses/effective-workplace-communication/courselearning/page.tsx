@@ -14,7 +14,6 @@ import {
   useSubmitQuizMutation,
 } from "../../../store/apiSlice";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface NavItem {
   label: string;
   href: string;
@@ -43,7 +42,6 @@ interface QuizQuestion {
   options?: string[];
 }
 
-// ─── Static Quiz Questions (content not in API yet) ───────────────────────────
 const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: "q1",
@@ -107,7 +105,6 @@ const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
 ];
 
-// ─── Static Lesson Content (content not in API yet) ───────────────────────────
 const LESSON_CONTENT = {
   title: "Lesson 1 - Welcome Message",
   body: [
@@ -142,7 +139,6 @@ const LESSON_CONTENT = {
   ],
 };
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
 const DashboardIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M6.01594 1.89214L2.4226 4.69214C1.8226 5.15881 1.33594 6.15214 1.33594 6.90547V11.8455C1.33594 13.3921 2.59594 14.6588 4.1426 14.6588H11.8626C13.4093 14.6588 14.6693 13.3921 14.6693 11.8521V6.99881C14.6693 6.19214 14.1293 5.15881 13.4693 4.69881L9.34927 1.81214C8.41594 1.15881 6.91594 1.19214 6.01594 1.89214Z" stroke="#636363" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -225,11 +221,9 @@ const PointsIcon = () => (
   </svg>
 );
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const getInitials = (name: string) =>
   name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
-// ─── Quiz Completion Screen ───────────────────────────────────────────────────
 function CourseCompletionScreen({ onReset }: { onReset: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center bg-white rounded-2xl border border-[#F0F0F0] p-12 gap-6 min-h-[500px]">
@@ -257,7 +251,6 @@ function CourseCompletionScreen({ onReset }: { onReset: () => void }) {
   );
 }
 
-// ─── Quiz View ────────────────────────────────────────────────────────────────
 function QuizView({
   onComplete,
   courseId,
@@ -280,7 +273,6 @@ function QuizView({
     try {
       await submitQuiz({ courseId, answers }).unwrap();
     } catch {
-      // still proceed to completion screen even on error
     }
     onComplete();
   };
@@ -309,7 +301,6 @@ function QuizView({
               </div>
             </div>
 
-            {/* Options or Textarea */}
             {q.type === "multiple-choice" && q.options ? (
               <div className="flex flex-col gap-2 pl-11">
                 {q.options.map((option, optIdx) => {
@@ -368,7 +359,6 @@ function QuizView({
   );
 }
 
-// ─── Sidebar Section ──────────────────────────────────────────────────────────
 function SidebarSection({
   section,
   activeSection,
@@ -489,7 +479,6 @@ function UserMenu() {
     email: "guest@example.com",
   };
 
-  // Close on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -500,7 +489,6 @@ function UserMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close on Escape
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -516,7 +504,6 @@ function UserMenu() {
 
   return (
     <div ref={ref} className="relative flex items-center gap-2 pl-2 border-l border-gray-100">
-      {/* Trigger */}
       <button
         onClick={() => setOpen((prev) => !prev)}
         className="flex items-center gap-2 cursor-pointer group"
@@ -550,14 +537,12 @@ function UserMenu() {
         </span>
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div
           className="absolute right-0 top-[calc(100%+10px)] w-64 bg-white rounded-2xl border border-[#F0F0F0] shadow-[0_8px_30px_rgba(0,0,0,0.10)] z-50 overflow-hidden"
           role="menu"
           aria-label="User options"
         >
-          {/* User info header */}
           <div className="px-4 py-4 border-b border-[#F0F0F0]">
             <div className="flex items-center gap-3">
               <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
@@ -612,7 +597,6 @@ function UserMenu() {
             </button>
           </div>
 
-          {/* Divider + Logout */}
           <div className="border-t border-[#F0F0F0] py-2">
             <button
               role="menuitem"
@@ -646,24 +630,19 @@ export default function CourseLearningPage() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
 
-  // ── Redux user ──
   const user = useSelector((state: RootState) => state.user) ?? {
     name: "Guest",
     email: "guest@example.com",
   };
 
-  // ── API data ──
   const { data: courseData, isLoading: courseLoading } = useGetCourseDetailQuery(COURSE_ID);
   const { data: progressData } = useGetCourseProgressQuery(COURSE_ID);
   const [markLessonComplete] = useMarkLessonCompleteMutation();
 
-  // Derive sections from API; fall back to empty while loading
   const sections: Section[] = courseData?.sections ?? [];
 
-  // Derive completed lessons — seed from API progress, then merge local state
   const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
 
-  // Once progress loads, hydrate local state
   useEffect(() => {
     if (progressData?.completedLessons?.length) {
       setLocalCompleted(new Set(progressData.completedLessons));
@@ -673,7 +652,6 @@ export default function CourseLearningPage() {
     }
   }, [progressData]);
 
-  // Combined completed set (API seed + local additions)
   const completedLessons = localCompleted;
 
   // Total non-quiz lessons across all sections
@@ -684,7 +662,6 @@ export default function CourseLearningPage() {
 
   const totalLessons = allLessonIds.length;
 
-  // Auto-complete detection
   useEffect(() => {
     if (
       totalLessons > 0 &&
@@ -708,7 +685,7 @@ export default function CourseLearningPage() {
       }
       return next;
     });
-    // Fire-and-forget API call
+
     markLessonComplete({ courseId: COURSE_ID, lessonId: id }).catch(() => {});
   };
 
@@ -772,7 +749,6 @@ export default function CourseLearningPage() {
 
       {/* ── Main ── */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* ── Topbar ── */}
         <header className="flex flex-shrink-0 items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100">
           <div className="flex flex-1 items-center gap-3">
             <button className="p-2 text-gray-400 hover:text-gray-600 lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
@@ -815,7 +791,6 @@ export default function CourseLearningPage() {
         <main className="flex-1 overflow-y-auto bg-[#F5F6FA]">
           <div className="flex flex-col lg:flex-row gap-5 px-6 py-6 max-w-[1400px]">
 
-            {/* ── Left Column ── */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-4">
                 <Link href="/courses/effective-workplace-communication" className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-[#E8E8E8] hover:bg-gray-50">
@@ -832,12 +807,10 @@ export default function CourseLearningPage() {
                 )}
               </div>
 
-              {/* Quiz submitted → completion screen */}
               {quizSubmitted ? (
                 <CourseCompletionScreen onReset={handleReset} />
               ) : (
                 <>
-                  {/* Video thumbnail — hidden when quiz active */}
                   {!isQuizActive && (
                     <div className="relative w-full max-h-[450px] aspect-video rounded-2xl overflow-hidden bg-gray-900 mb-5">
                       <Image
@@ -861,7 +834,6 @@ export default function CourseLearningPage() {
                     </div>
                   )}
 
-                  {/* Tabs — hidden when quiz active */}
                   {!isQuizActive && (
                     <div className="flex gap-0 mb-5 border-b border-[#F0F0F0]">
                       <button
@@ -883,7 +855,6 @@ export default function CourseLearningPage() {
                     </div>
                   )}
 
-                  {/* Quiz or Content or Reviews */}
                   {isQuizActive ? (
                     <QuizView onComplete={handleQuizComplete} courseId={COURSE_ID} />
                   ) : activeTab === "content" ? (
@@ -943,7 +914,6 @@ export default function CourseLearningPage() {
               )}
             </div>
 
-            {/* ── Right Sidebar (Lessons Panel) ── */}
             <div className="w-full max-w-[407px] flex-shrink-0">
               <div className="bg-white rounded-2xl border border-[#F0F0F0] overflow-hidden">
                 <div className="px-4 py-3.5 border-b border-[#F0F0F0]">

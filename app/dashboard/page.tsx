@@ -9,7 +9,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useGetCoursesQuery } from "../store/apiSlice";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface Course {
   id: string;
   title: string;
@@ -25,7 +24,6 @@ interface NavItem {
   active?: boolean;
 }
 
-// ─── Icon Components ──────────────────────────────────────────────────────────
 const DashboardIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path
@@ -124,11 +122,9 @@ const TrendUpIcon = () => (
   </svg>
 );
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const getInitials = (name?: string) =>
   (name || "User").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
-// ─── User Dropdown Menu ───────────────────────────────────────────────────────
 function UserMenu() {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -140,7 +136,6 @@ function UserMenu() {
     email: "guest@example.com",
   };
 
-  // Close on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -151,7 +146,6 @@ function UserMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close on Escape
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -167,7 +161,6 @@ function UserMenu() {
 
   return (
     <div ref={ref} className="relative flex items-center gap-2 pl-2 border-l border-gray-100">
-      {/* Trigger */}
       <button
         onClick={() => setOpen((prev) => !prev)}
         className="flex items-center gap-2 cursor-pointer group"
@@ -201,14 +194,12 @@ function UserMenu() {
         </span>
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div
           className="absolute right-0 top-[calc(100%+10px)] w-64 bg-white rounded-2xl border border-[#F0F0F0] shadow-[0_8px_30px_rgba(0,0,0,0.10)] z-50 overflow-hidden"
           role="menu"
           aria-label="User options"
         >
-          {/* User info header */}
           <div className="px-4 py-4 border-b border-[#F0F0F0]">
             <div className="flex items-center gap-3">
               <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
@@ -236,7 +227,6 @@ function UserMenu() {
             </div>
           </div>
 
-          {/* Menu items */}
           <div className="py-2">
             <button
               role="menuitem"
@@ -263,7 +253,6 @@ function UserMenu() {
             </button>
           </div>
 
-          {/* Divider + Logout */}
           <div className="border-t border-[#F0F0F0] py-2">
             <button
               role="menuitem"
@@ -284,7 +273,6 @@ function UserMenu() {
   );
 }
 
-// ─── Main Dashboard Page ──────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [headerSearch, setHeaderSearch] = useState("");
@@ -313,7 +301,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-white">
-      {/* ── Sidebar ── */}
       <aside
         className={[
           "fixed lg:static inset-y-0 left-0 z-40 w-[210px]",
@@ -348,9 +335,7 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-30 bg-black/20 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       )}
 
-      {/* ── Main content ── */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* ── Top Navbar ── */}
         <header className="flex flex-shrink-0 items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100">
           <div className="flex flex-1 items-center gap-3">
             <button className="p-2 text-gray-400 hover:text-gray-600 lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
@@ -373,7 +358,6 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Chat */}
             <button className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors" aria-label="Messages">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M22 10V13C22 17 20 19 16 19H15.5C15.19 19 14.89 19.15 14.7 19.4L13.2 21.4C12.54 22.28 11.46 22.28 10.8 21.4L9.3 19.4C9.14 19.18 8.77 19 8.5 19H8C4 19 2 18 2 13V8C2 4 4 2 8 2H14" stroke="#0A60E1" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" />
@@ -384,7 +368,6 @@ export default function DashboardPage() {
               </svg>
             </button>
 
-            {/* Notifications */}
             <button className="relative p-2 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gray-600 transition-colors" aria-label="Notifications — 4 unread">
               <svg width="25" height="28" viewBox="0 0 25 28" fill="none" aria-hidden="true">
                 <path d="M12.0196 6.91016C8.7096 6.91016 6.0196 9.60016 6.0196 12.9102V15.8002C6.0196 16.4102 5.7596 17.3402 5.4496 17.8602L4.2996 19.7702C3.5896 20.9502 4.0796 22.2602 5.3796 22.7002C9.6896 24.1402 14.3396 24.1402 18.6496 22.7002C19.8596 22.3002 20.3896 20.8702 19.7296 19.7702L18.5796 17.8602C18.2796 17.3402 18.0196 16.4102 18.0196 15.8002V12.9102C18.0196 9.61016 15.3196 6.91016 12.0196 6.91016Z" stroke="#636363" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" />
@@ -396,12 +379,10 @@ export default function DashboardPage() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#e84c1e] rounded-full" aria-hidden="true" />
             </button>
 
-            {/* ── User Menu with Logout Dropdown ── */}
             <UserMenu />
           </div>
         </header>
 
-        {/* ── Page content ── */}
         <main className="flex-1 bg-white">
           <div className="px-6 py-6 max-w-7xl">
             <div className="mb-6">
@@ -409,7 +390,6 @@ export default function DashboardPage() {
               <p className="mt-0.5 text-sm text-[#636363]">Create, organize, and assign courses to teams and individuals</p>
             </div>
 
-            {/* ── Stat cards ── */}
             <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-3">
               <div className="flex items-center gap-4 p-3 bg-white rounded-lg border-4 border-[#FDFDFD]">
                 <div className="flex flex-shrink-0 items-center justify-center w-12 h-12 rounded-xl bg-purple-50">
@@ -491,7 +471,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* ── Search + Filters ── */}
             <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center">
               <div className="relative w-full max-w-[681px]">
                 <label htmlFor="course-search" className="sr-only">Search Course</label>
@@ -515,7 +494,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* ── Course Grid ── */}
             {isLoading ? (
               <div className="grid grid-cols-1 gap-5 mb-8 sm:grid-cols-2 lg:grid-cols-3">
                 {[...Array(6)].map((_, i) => (
@@ -545,7 +523,6 @@ export default function DashboardPage() {
   );
 }
 
-// ─── Course Card ──────────────────────────────────────────────────────────────
 function CourseCard({ course }: { course: Course }) {
   const href = course.id === "1" ? "/courses/effective-workplace-communication" : "#";
   return (
@@ -576,7 +553,6 @@ function CourseCard({ course }: { course: Course }) {
   );
 }
 
-// ─── Pagination ───────────────────────────────────────────────────────────────
 function Pagination() {
   const [activePage, setActivePage] = useState(1);
   const pages = [1, 2, 3, 4, 5];
