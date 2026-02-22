@@ -39,21 +39,17 @@ export interface UserProfile {
   role?: 'admin' | 'learner' | 'instructor'
 }
 
-// ────────────────────────────────────────────────────────────────
-// Main API definition
-// ────────────────────────────────────────────────────────────────
 
 export const apiSlice = createApi({
   reducerPath: 'api',
 
-  // Later: change to fetchBaseQuery({ baseUrl: 'https://api.yourdomain.com' })
   baseQuery: fakeBaseQuery(),
 
   tagTypes: [
-    'User',             // current logged-in user
-    'Courses',          // list of all courses
-    'CourseDetail',     // single course + learners + sections
-    'Progress',         // user progress per course
+    'User',             
+    'Courses',         
+    'CourseDetail',     
+    'Progress',         
   ],
 
   endpoints: (builder) => ({
@@ -67,7 +63,7 @@ export const apiSlice = createApi({
       async queryFn({ email, password }) {
         await new Promise(r => setTimeout(r, 900)) // fake network delay
 
-        // Your current demo credentials
+        // Demo credentials
         if (email === "shaki_ogunlesi@outlook.com" && password === "admin125@#") {
           return {
             data: {
@@ -161,7 +157,6 @@ export const apiSlice = createApi({
       },
     }),
 
-    // ── COURSE DETAIL + LEARNING PAGE DATA ─────────────────────────
 
     getCourseDetail: builder.query<
       {
@@ -178,7 +173,6 @@ export const apiSlice = createApi({
       async queryFn(courseId) {
         await new Promise(r => setTimeout(r, 900))
 
-        // For now we only have full data for course "1"
         if (courseId !== "1") {
           return {
             error: { status: 404, data: "Course not found" }
@@ -232,9 +226,6 @@ export const apiSlice = createApi({
       }
     }),
 
-    // ── PROGRESS / LEARNING STATE ──────────────────────────────────
-    // (you can store this in localStorage or later in backend)
-
     getCourseProgress: builder.query<
       {
         completedLessons: string[]      
@@ -247,7 +238,6 @@ export const apiSlice = createApi({
       ],
 
       async queryFn(courseId) {
-        // Later: read from localStorage or API
         await new Promise(r => setTimeout(r, 300))
         return {
           data: {
@@ -282,7 +272,6 @@ export const apiSlice = createApi({
       async queryFn({ answers }) {
         await new Promise(r => setTimeout(r, 1400))
 
-        // Very naive example scoring – improve later
         const totalPoints = 40 // sum of all question points
         const achieved = Math.floor(Math.random() * totalPoints * 0.8) + 10
 
